@@ -16,6 +16,26 @@
         android:title="@string/action_share_images_all"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_recognize_all"
+        android:title="@string/action_recognize_all"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_share_text"
+        android:title="@string/action_share_text"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_share_markdown"
+        android:title="@string/action_share_markdown"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_remove_text_all"
+        android:title="@string/action_remove_text_all"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_text_language"
+        android:title="@string/action_text_language"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_rename"
         android:title="@string/action_rename"
         app:showAsAction="never" />

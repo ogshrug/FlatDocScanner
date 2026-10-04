@@ -9,6 +9,8 @@ import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
 import com.example.docscanner.export.ImageExporter
 import com.example.docscanner.export.PdfExporter
+import com.example.docscanner.ocr.PageTextCodec
+import com.example.docscanner.ocr.TextExport
 import java.io.File
 
 /** Builds share-sheet intents for pages. Call off the main thread: these write files. */
@@ -36,6 +38,19 @@ object Sharing {
         // ClipData carries the read permission for every image, not just the first.
         send.clipData = ClipData.newRawUri(null, uris[0]).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
         return Intent.createChooser(send, context.getString(R.string.share_images_chooser))
+    }
+
+    /** The recognised text of [pages] as a .txt or .md file; unrecognised pages are noted. */
+    fun text(context: Context, pages: List<PageEntity>, title: String, markdown: Boolean): Intent {
+        val texts = pages.map { PageTextCodec.decode(it.ocr) }
+        val body = if (markdown) TextExport.markdown(title, texts) else TextExport.plainText(title, texts)
+        val file = File(freshDir(context), "${safe(title)}.${if (markdown) "md" else "txt"}").apply { writeText(body) }
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(if (markdown) "text/markdown" else "text/plain")
+            .putExtra(Intent.EXTRA_STREAM, uriFor(context, file))
+            .putExtra(Intent.EXTRA_TITLE, file.name)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return Intent.createChooser(send, context.getString(R.string.share_text_chooser))
     }
 
     private fun safe(title: String) = title.replace(Regex("[^A-Za-z0-9 ._-]"), "_").ifBlank { "scan" }

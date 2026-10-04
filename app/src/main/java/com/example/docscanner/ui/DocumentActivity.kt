@@ -3,6 +3,7 @@ package com.example.docscanner.ui
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.EditText
@@ -63,6 +64,16 @@ class DocumentActivity : AppCompatActivity() {
                 R.id.action_share_images -> shareImages(currentPagesForAction())
                 R.id.action_select -> setSelecting(true)
                 R.id.action_select_all -> selectAll()
+                R.id.action_recognize_all -> TextUi.recognizePages(this, adapter.pages.toList())
+                R.id.action_recognize_selected -> {
+                    val pages = currentPagesForAction()
+                    setSelecting(false)
+                    TextUi.recognizePages(this, pages)
+                }
+                R.id.action_remove_text_all -> TextUi.confirmRemoveAll(this, documentId)
+                R.id.action_text_language -> TextUi.chooseScript(this)
+                R.id.action_share_text -> shareText(markdown = false)
+                R.id.action_share_markdown -> shareText(markdown = true)
                 R.id.action_delete_selected -> confirmDeleteSelected()
                 R.id.action_rename -> rename()
                 R.id.action_delete -> confirmDeleteDocument()
@@ -105,20 +116,39 @@ class DocumentActivity : AppCompatActivity() {
         binding.toolbar.setNavigationContentDescription(if (on) R.string.action_cancel_selection else R.string.action_back)
         binding.addPageButton.isVisible = !on
         updateSelectionTitle()
-        @Suppress("NotifyDataSetChanged")
-        adapter.notifyDataSetChanged()
+        refreshChecks()
     }
 
-    private fun toggle(page: PageEntity, position: Int) {
+    private fun toggle(page: PageEntity) {
         if (!selected.add(page.id)) selected.remove(page.id)
-        adapter.notifyItemChanged(position)
+        refreshChecks()
         updateSelectionTitle()
     }
 
     private fun selectAll() {
         if (selected.size == adapter.pages.size) selected.clear() else adapter.pages.forEach { selected += it.id }
-        @Suppress("NotifyDataSetChanged")
-        adapter.notifyDataSetChanged()
+        refreshChecks()
+        updateSelectionTitle()
+    }
+
+    /**
+     * Updates the tick on the visible pages without rebinding them, so a page being held
+     * for dragging isn't interrupted.
+     */
+    private fun refreshChecks() {
+        for (i in 0 until binding.grid.childCount) {
+            val holder = binding.grid.getChildViewHolder(binding.grid.getChildAt(i)) as? PageAdapter.Holder ?: continue
+            val page = adapter.pages.getOrNull(holder.bindingAdapterPosition) ?: continue
+            holder.b.root.isChecked = selecting && page.id in selected
+        }
+    }
+
+    /** Holding a page selects it (and starts selection mode); holding and dragging moves it. */
+    private fun selectByHold(position: Int) {
+        val page = adapter.pages.getOrNull(position) ?: return
+        if (!selecting) setSelecting(true)
+        selected += page.id
+        refreshChecks()
         updateSelectionTitle()
     }
 
@@ -200,6 +230,29 @@ class DocumentActivity : AppCompatActivity() {
         export(R.string.export_failed) { Sharing.pdf(this, pages, title) }
     }
 
+    /** Shares the recognised text; offers to recognise it first if no page has any yet. */
+    private fun shareText(markdown: Boolean) {
+        val pages = adapter.pages.toList()
+        if (pages.isEmpty()) return
+        val share = { export(R.string.export_failed) { Sharing.text(this, pagesNow(pages), title, markdown) } }
+        if (pages.any { it.ocr != null }) {
+            share()
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.no_text_yet_title)
+            .setMessage(R.string.no_text_yet_body)
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_recognize) { _, _ -> TextUi.recognizePages(this, pages) { share() } }
+            .show()
+    }
+
+    /** The latest stored version of [pages], so text recognised a moment ago is included. */
+    private suspend fun pagesNow(pages: List<PageEntity>): List<PageEntity> {
+        val ids = pages.map { it.id }.toSet()
+        return repository.getPages(documentId).filter { it.id in ids }
+    }
+
     private fun shareImages(pages: List<PageEntity>) {
         if (pages.isEmpty()) return
         val numbers = pages.map { p -> adapter.pages.indexOfFirst { it.id == p.id } + 1 }
@@ -207,7 +260,7 @@ class DocumentActivity : AppCompatActivity() {
     }
 
     /** Runs [build] off the main thread with a spinner, then launches the share sheet it returns. */
-    private fun export(errorText: Int, build: () -> Intent) {
+    private fun export(errorText: Int, build: suspend () -> Intent) {
         binding.progress.isVisible = true
         lifecycleScope.launch {
             val chooser = runCatching { withContext(Dispatchers.IO) { build() } }.getOrNull()
@@ -249,23 +302,33 @@ class DocumentActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val page = pages[position]
-            holder.b.number.text = getString(R.string.page_number, position + 1)
+            val label = getString(R.string.page_number, position + 1)
+            holder.b.number.text = if (page.ocr != null) getString(R.string.text_page_label, label) else label
             holder.b.root.isChecked = selecting && page.id in selected
             Thumbnails.load(holder.b.image, page.processedPath, 512, lifecycleScope)
             holder.b.root.setOnClickListener {
                 val pos = holder.bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-                if (selecting) toggle(pages[pos], pos)
+                if (selecting) toggle(pages[pos])
                 else startActivity(PageViewerActivity.intent(this@DocumentActivity, documentId, pages[pos].id))
             }
         }
     }
 
-    /** Long-press and drag to reorder (not while selecting); saved when the page is dropped. */
+    /**
+     * Long-press selects the page; long-press and drag reorders. The new order is saved when
+     * the page is dropped.
+     */
     private inner class DragCallback : ItemTouchHelper.SimpleCallback(
         ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.START or ItemTouchHelper.END, 0,
     ) {
-        override fun isLongPressDragEnabled() = !selecting
+        override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            super.onSelectedChanged(viewHolder, actionState)
+            if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                selectByHold(viewHolder.bindingAdapterPosition)
+            }
+        }
 
         override fun onMove(rv: RecyclerView, from: RecyclerView.ViewHolder, to: RecyclerView.ViewHolder): Boolean {
             dragging = true

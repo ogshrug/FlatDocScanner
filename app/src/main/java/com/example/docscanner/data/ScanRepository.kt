@@ -2,6 +2,10 @@ package com.example.docscanner.data
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.example.docscanner.ocr.PageText
+import com.example.docscanner.ocr.PageTextCodec
+import com.example.docscanner.ocr.Script
+import com.example.docscanner.ocr.TextRecognizer
 import com.example.docscanner.scan.PageSpec
 import com.example.docscanner.util.Bitmaps
 import kotlinx.coroutines.Dispatchers
@@ -66,10 +70,29 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         withContext(Dispatchers.IO) {
             val newFile = File(File(page.processedPath).parentFile, "page_${UUID.randomUUID()}.jpg")
             Bitmaps.writeJpeg(processed, newFile)
-            dao.updatePage(page.copy(processedPath = newFile.path).withSpec(spec))
+            // The page image changed, so any recognised text no longer matches it.
+            dao.updatePage(page.copy(processedPath = newFile.path, ocr = null).withSpec(spec))
             File(page.processedPath).delete()
             dao.touchDocument(page.documentId, System.currentTimeMillis())
         }
+
+    /** Recognises the text on one page (the user asked for it) and stores it. */
+    suspend fun recognizeText(page: PageEntity, script: Script): PageText {
+        val text = withContext(Dispatchers.Default) {
+            val bmp = Bitmaps.decode(File(page.processedPath), OCR_MAX_DIM) ?: error("could not read page")
+            try {
+                TextRecognizer.recognize(bmp, script)
+            } finally {
+                bmp.recycle()
+            }
+        }
+        dao.setOcr(page.id, PageTextCodec.encode(text))
+        return text
+    }
+
+    suspend fun removeText(pageId: Long) = dao.setOcr(pageId, null)
+
+    suspend fun removeAllText(documentId: Long) = dao.clearOcr(documentId)
 
     suspend fun reorder(documentId: Long, pageIdsInOrder: List<Long>) {
         dao.reorder(pageIdsInOrder)
@@ -106,6 +129,11 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         spine = spec.spine?.serialize(),
         removeFingers = spec.removeFingers,
     )
+
+    private companion object {
+        /** ML Kit is accurate well below the full page size, and faster. */
+        const val OCR_MAX_DIM = 2400
+    }
 
     private fun defaultTitle(now: Long) =
         "Scan " + SimpleDateFormat("yyyy-MM-dd HH.mm", Locale.getDefault()).format(Date(now))

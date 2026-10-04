@@ -67,6 +67,8 @@ dependencies {
 
     implementation(libs.opencv)
     implementation(libs.onnxruntime.android)
+    implementation(libs.mlkit.text.latin)
+    implementation(libs.mlkit.text.devanagari)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)

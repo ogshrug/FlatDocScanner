@@ -102,4 +102,33 @@
         <item quantity="one">Delete %d page?</item>
         <item quantity="other">Delete %d pages?</item>
     </plurals>
+
+    <!-- Text recognition (opt-in per page or per document) -->
+    <string name="action_recognize_page">Recognize text</string>
+    <string name="action_recognize_all">Recognize text in all pages</string>
+    <string name="action_recognize_selected">Recognize text</string>
+    <string name="action_remove_text_all">Remove recognized text</string>
+    <string name="action_share_text">Share as text</string>
+    <string name="action_share_markdown">Share as Markdown</string>
+    <string name="action_text_language">Text language</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_share">Share</string>
+    <string name="action_remove_text">Remove text</string>
+    <string name="action_recognize_again">Recognize again</string>
+    <string name="action_recognize">Recognize</string>
+    <string name="script_latin">Latin (English and most European languages)</string>
+    <string name="script_devanagari">Devanagari (Hindi, Marathi, Nepali…) + Latin</string>
+    <string name="text_sheet_title">Text on page %d</string>
+    <string name="text_sheet_empty">No text was found on this page.</string>
+    <string name="text_copied">Text copied</string>
+    <string name="recognizing">Recognizing text…</string>
+    <string name="recognizing_progress">Recognizing page %1$d of %2$d…</string>
+    <string name="recognize_failed">The text couldn\'t be recognized. Try again.</string>
+    <string name="recognize_done">Text recognized on %1$d of %2$d pages</string>
+    <string name="text_page_label">%1$s · Text</string>
+    <string name="no_text_yet_title">No text recognized yet</string>
+    <string name="no_text_yet_body">Recognize the text in all pages first? It stays on this phone.</string>
+    <string name="remove_text_title">Remove recognized text?</string>
+    <string name="remove_text_body">The page images stay as they are. You can recognize the text again later.</string>
+    <string name="share_text_chooser">Share text</string>
 </resources>

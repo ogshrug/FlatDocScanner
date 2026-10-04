@@ -7,14 +7,14 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [DocumentEntity::class, PageEntity::class], version = 2, exportSchema = false)
+@Database(entities = [DocumentEntity::class, PageEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun scanDao(): ScanDao
 
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "docscanner.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
 
         /** Version 2: curved pages, book spreads and finger removal. */
@@ -24,6 +24,13 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE pages ADD COLUMN side TEXT NOT NULL DEFAULT 'NONE'")
                 db.execSQL("ALTER TABLE pages ADD COLUMN spine TEXT")
                 db.execSQL("ALTER TABLE pages ADD COLUMN remove_fingers INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        /** Version 3: optional recognised text per page. */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pages ADD COLUMN ocr TEXT")
             }
         }
     }

@@ -31,7 +31,9 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
 - **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
 - **Full-screen viewer**: tap a page to open it; swipe for the next or previous page, pinch or double-tap to zoom. While zoomed, a swipe pans the page and only turns it once you reach the edge. Edit, share and delete from the top bar.
-- **Share as images**: the whole document, one page, or a selection. **Select pages** lets you tick pages to share as images or a PDF, or to delete.
+- **Share as images**: the whole document, one page, or a selection. Hold a page (or use **Select pages**) to start selecting; hold and drag to reorder instead.
+- **Text recognition (OCR), opt-in**: nothing is recognised unless you ask, for one page (**Recognize text** in the viewer, with Copy, Share and Remove), a selection, or the whole document. Runs on-device with ML Kit Text Recognition v2; **Text language** switches between Latin and Devanagari (Hindi, Marathi, Nepali… plus Latin). Pages with text show "· Text" in the grid; re-cropping a page clears its text.
+- **Text exports**: share the document as **TXT** or **Markdown** (paragraphs re-flowed, words hyphenated across lines re-joined). **Share PDF** adds an invisible text layer on recognised pages, so the PDF is searchable and its text can be copied; other pages stay image-only.
 - **Library** of all scans with cover thumbnails, rename and delete
 - Everything is on-device: no account and no network access
 
@@ -110,6 +112,8 @@ app/src/main/java/com/example/docscanner/
 │   └── ScanRepository.kt     Database + page-image file management
 ├── export/PdfExporter.kt     PDF generation
 ├── export/ImageExporter.kt   Page images for sharing
+├── ocr/PageText.kt           Recognised text model, TXT and Markdown export (pure Kotlin)
+├── ocr/TextRecognizer.kt     ML Kit recognition, JSON storage, language setting
 ├── ui/
 │   ├── MainActivity.kt       Library
 │   ├── CameraActivity.kt     Live preview, auto/manual capture, import
@@ -119,7 +123,8 @@ app/src/main/java/com/example/docscanner/
 │   ├── DocumentActivity.kt   Page grid, reorder, select, share
 │   ├── PageViewerActivity.kt Full-screen swipe-and-zoom viewer
 │   ├── ZoomImageView.kt      Pinch/double-tap zoom that hands swipes to the pager at the edge
-│   ├── Sharing.kt            Share-sheet intents for images and PDF
+│   ├── Sharing.kt            Share-sheet intents for images, PDF and text
+│   ├── TextUi.kt             Opt-in OCR: page text sheet, recognise many, language
 │   └── UiUtils.kt            Insets and thumbnail cache
 └── util/Bitmaps.kt           EXIF-aware sampled decoding, JPEG writing
 
@@ -137,6 +142,7 @@ tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTo
 | Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
 | Page detection | DocAligner LCNet-100 via ONNX Runtime, OpenCV fallback |
 | Curved pages | UVDoc via ONNX Runtime 1.30 |
+| Text recognition | ML Kit Text Recognition v2 (Latin + Devanagari, bundled, offline) |
 | Storage | Room 2.8 (KSP) |
 | PDF | `android.graphics.pdf.PdfDocument` |
 | Build | AGP 9.4, Gradle 9.6, version catalog |
@@ -152,7 +158,7 @@ Requirements:
 ```bash
 ./gradlew :app:assembleDebug        # build the debug APK
 ./gradlew :app:installDebug         # install on a connected device
-./gradlew :app:testDebugUnitTest    # unit tests (geometry, auto-capture, spine fit, gutter gains)
+./gradlew :app:testDebugUnitTest    # unit tests (geometry, auto-capture, spine fit, gutter gains, text export)
 ./gradlew :app:lintDebug            # Android lint
 ```
 
@@ -170,7 +176,8 @@ python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out app/src/main/assets/uvdoc.
 - [x] **Phase 1: Flat scanner MVP**: capture, detection, manual corners, perspective correction, filters, multi-page documents, PDF export
 - [x] **Phase 2: Real-time capture**: live outline, focus scoring, stability-based auto-capture, page-turn detection for continuous book scanning
 - [x] **Phase 3: Book pages**: spine detection and split, on-device curved-page flattening (UVDoc), gutter shadow correction, finger removal
-- [ ] **Phase 4: Text**: on-device OCR (ML Kit), searchable PDFs, TXT/Markdown export, optional cloud parsing for tables and formulas
+- [x] **Phase 4: Text (on-device)**: opt-in OCR per page or document (ML Kit, Latin and Devanagari), searchable PDFs, TXT/Markdown export
+- [ ] **Phase 4b: Structured text (cloud)**: optional server-side parsing for tables and formulas, more scripts
 - [ ] **Phase 5: Hardening**: offline queueing, low-end device performance, more export formats
 
 ## Tuning

@@ -63,6 +63,12 @@ interface ScanDao {
         pageIdsInOrder.forEachIndexed { index, id -> setPosition(id, index) }
     }
 
+    @Query("UPDATE pages SET ocr = :ocr WHERE id = :id")
+    suspend fun setOcr(id: Long, ocr: String?)
+
+    @Query("UPDATE pages SET ocr = NULL WHERE document_id = :documentId")
+    suspend fun clearOcr(documentId: Long)
+
     @Query("DELETE FROM pages WHERE id = :id")
     suspend fun deletePage(id: Long)
 

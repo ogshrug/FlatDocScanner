@@ -44,6 +44,8 @@ data class PageEntity(
     /** Book gutter, see [com.example.docscanner.scan.Spine.serialize]. */
     val spine: String? = null,
     @ColumnInfo(name = "remove_fingers", defaultValue = "0") val removeFingers: Boolean = false,
+    /** Recognised text, only if the user asked for it; see [com.example.docscanner.ocr.PageTextCodec]. */
+    val ocr: String? = null,
 )
 
 data class DocumentSummary(

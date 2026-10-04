@@ -54,6 +54,7 @@ class PageViewerActivity : AppCompatActivity() {
         binding.toolbar.setOnMenuItemClickListener {
             val page = currentPage() ?: return@setOnMenuItemClickListener true
             when (it.itemId) {
+                R.id.action_text -> TextUi.showPageText(this, page, binding.pager.currentItem + 1)
                 R.id.action_edit -> startActivity(CropActivity.editPageIntent(this, page.id))
                 R.id.action_share_image -> share(page)
                 R.id.action_delete_page -> confirmDelete(page)
