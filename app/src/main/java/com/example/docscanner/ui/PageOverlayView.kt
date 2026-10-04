@@ -7,6 +7,8 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.util.AttributeSet
 import android.view.View
+import androidx.core.content.ContextCompat
+import com.example.docscanner.R
 import com.example.docscanner.scan.Quad
 
 /**
@@ -27,6 +29,7 @@ class PageOverlayView @JvmOverloads constructor(
     }
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val path = Path()
+    private val readyColor = ContextCompat.getColor(context, R.color.accent)
 
     private var quad: Quad? = null
     private var frameWidth = 0
@@ -63,15 +66,10 @@ class PageOverlayView @JvmOverloads constructor(
         }
         path.close()
 
-        val color = if (ready) READY else SEEN
+        val color = if (ready) readyColor else Color.WHITE
         fill.color = Color.argb((40 + 80 * progress).toInt(), Color.red(color), Color.green(color), Color.blue(color))
         stroke.color = color
         canvas.drawPath(path, fill)
         canvas.drawPath(path, stroke)
-    }
-
-    private companion object {
-        val SEEN = Color.WHITE
-        val READY = Color.rgb(0x4D, 0xD0, 0xA1)
     }
 }

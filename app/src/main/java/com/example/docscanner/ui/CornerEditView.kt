@@ -12,6 +12,8 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.content.ContextCompat
+import com.example.docscanner.R
 import androidx.core.graphics.withClip
 import com.example.docscanner.scan.Pt
 import com.example.docscanner.scan.Quad
@@ -66,8 +68,8 @@ class CornerEditView @JvmOverloads constructor(
         strokeWidth = 1.5f * density
         color = Color.WHITE
     }
-    private val validColor = Color.rgb(0x26, 0xA6, 0x9A)
-    private val invalidColor = Color.rgb(0xE5, 0x39, 0x35)
+    private val validColor = ContextCompat.getColor(context, R.color.accent)
+    private val invalidColor = ContextCompat.getColor(context, R.color.error)
 
     fun setImage(bitmap: Bitmap, quad: Quad) {
         this.bitmap = bitmap
