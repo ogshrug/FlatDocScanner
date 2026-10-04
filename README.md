@@ -1,11 +1,18 @@
 # FlatDocScanner
 
-An Android document and book scanner. Photograph a page and FlatDocScanner finds its edges, squares it up, cleans it and saves it into a multi-page document you can share as a PDF.
+An Android document and book scanner. Point your phone at a page and FlatDocScanner outlines it live, takes the photo by itself once you hold still, squares it up, cleans it and adds it to a multi-page document you can share as a PDF. Turn the page, and it captures the next one.
 
-The long-term goal is hands-free **book** scanning: auto-capture on every page turn, flattening of curved pages, splitting of two-page spreads, and OCR. This first release is the flat-document foundation that those features build on (see [Roadmap](#roadmap)).
+The long-term goal is complete hands-free **book** scanning, including flattening of curved pages, splitting of two-page spreads, and OCR (see [Roadmap](#roadmap)).
 
 ## Features
 
+- **Live page outline**: every preview frame is analysed, and the detected page is drawn over the camera view
+- **Auto-capture** (on by default, toggle with **Auto / Manual**):
+  - fires once the page is large enough, sharp and held still for 0.7 s; the outline fills in as it counts down
+  - **page-turn detection**: after a capture it waits for the page to leave the view or the outline to jump, and refuses to capture content that matches the previous page, so you can scan a book just by turning pages
+  - auto-captured pages are cropped, filtered and saved in the background while you keep scanning; tap any page later to fine-tune it
+  - a status pill tells you what it needs: *Looking for a page*, *Move closer*, *Hold steady while it focuses*, *Hold still*, *Turn the page*
+- **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
 - **Camera capture** with CameraX, plus **import from gallery**
 - **Automatic page detection** with OpenCV: edge and contour analysis finds the page's four corners, and a threshold-based pass catches low-contrast edges
 - **Manual corner adjustment**: drag any corner, with a magnifier that shows exactly where it sits. If the corners cross, the outline turns red and saving is blocked until they're fixed.
@@ -21,6 +28,23 @@ The long-term goal is hands-free **book** scanning: auto-capture on every page t
 - Everything is on-device: no account and no network access
 
 ## How it works
+
+Live capture (about 640×480, every frame):
+
+```
+CameraX ImageAnalysis (Y plane = grayscale, rotated upright)
+      │
+      ▼
+FrameAnalyzer ── PageDetector outline + sharpness + 24×32 page signature
+      │
+      ▼
+AutoCapture ── state machine: TOO_SMALL / BLURRY / HOLD_STILL → CAPTURE → TURN_PAGE
+      │            (re-arms on page lost or outline jump; rejects duplicate content)
+      ▼
+ImageCapture (full resolution) → ScanPipeline → saved page
+```
+
+Per photo (auto-captured, or after a manual shot in the crop screen):
 
 ```
 Camera / gallery
@@ -54,7 +78,10 @@ app/src/main/java/com/example/docscanner/
 ├── scan/
 │   ├── Quad.kt               Corner geometry: ordering, convexity, output size (pure Kotlin)
 │   ├── PageDetector.kt       OpenCV page detection
-│   └── ImageProcessor.kt     Perspective warp and filters
+│   ├── ImageProcessor.kt     Perspective warp and filters
+│   ├── FrameAnalyzer.kt      Live CameraX analyser: outline, sharpness, signature
+│   ├── AutoCapture.kt        Auto-capture and page-turn state machine (pure Kotlin)
+│   └── ScanPipeline.kt       Photo → saved page without user input
 ├── data/
 │   ├── Entities.kt           DocumentEntity, PageEntity
 │   ├── ScanDao.kt            Room queries
@@ -63,7 +90,8 @@ app/src/main/java/com/example/docscanner/
 ├── export/PdfExporter.kt     PDF generation
 ├── ui/
 │   ├── MainActivity.kt       Library
-│   ├── CameraActivity.kt     Capture / import
+│   ├── CameraActivity.kt     Live preview, auto/manual capture, import
+│   ├── PageOverlayView.kt    Live page outline over the preview
 │   ├── CropActivity.kt       Corners → filter → save
 │   ├── CornerEditView.kt     Draggable corner editor with magnifier
 │   ├── DocumentActivity.kt   Page grid, reorder, share PDF
@@ -93,7 +121,7 @@ Requirements:
 ```bash
 ./gradlew :app:assembleDebug        # build the debug APK
 ./gradlew :app:installDebug         # install on a connected device
-./gradlew :app:testDebugUnitTest    # unit tests (corner geometry)
+./gradlew :app:testDebugUnitTest    # unit tests (corner geometry, auto-capture state machine)
 ./gradlew :app:lintDebug            # Android lint
 ```
 
@@ -102,10 +130,14 @@ The debug APK bundles OpenCV's native libraries for all four CPU architectures, 
 ## Roadmap
 
 - [x] **Phase 1: Flat scanner MVP**: capture, detection, manual corners, perspective correction, filters, multi-page documents, PDF export
-- [ ] **Phase 2: Real-time capture**: live edge overlay, blur/focus scoring, stability-based auto-capture, and auto-capture on page turn for continuous book scanning
+- [x] **Phase 2: Real-time capture**: live outline, focus scoring, stability-based auto-capture, page-turn detection for continuous book scanning
 - [ ] **Phase 3: Book pages**: two-page spine detection and split, learned curved-page dewarping (UVDoc, MIT-licensed), finger removal
 - [ ] **Phase 4: Text**: on-device OCR (ML Kit), searchable PDFs, TXT/Markdown export, optional cloud parsing for tables and formulas
 - [ ] **Phase 5: Hardening**: offline queueing, low-end device performance, more export formats
+
+## Tuning
+
+The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books.
 
 ## Third-party licenses
 

@@ -11,17 +11,17 @@ import org.opencv.imgproc.Imgproc
 import kotlin.math.max
 
 /**
- * Classical page detection: edges → contours → the largest
- * convex 4-point polygon. Runs on a downscaled copy and returns corners in the
- * coordinates of the bitmap passed in.
+ * Classical page detection: edges → contours → the largest convex 4-point polygon.
+ * Works on a downscaled grayscale copy and returns corners in the coordinates of the input.
  */
 object PageDetector {
 
-    private const val DETECT_MAX_DIM = 640.0
+    /** Long side the detector works at; live camera frames are analysed at about this size. */
+    const val DETECT_MAX_DIM = 640
     private const val MIN_AREA_FRACTION = 0.15
 
     fun detect(bitmap: Bitmap): Quad? {
-        val scale = DETECT_MAX_DIM / max(bitmap.width, bitmap.height)
+        val scale = DETECT_MAX_DIM.toDouble() / max(bitmap.width, bitmap.height)
         val small = if (scale < 1.0) {
             Bitmap.createScaledBitmap(
                 bitmap, (bitmap.width * scale).toInt(), (bitmap.height * scale).toInt(), true,
@@ -34,14 +34,23 @@ object PageDetector {
         try {
             Utils.bitmapToMat(small, rgba)
             Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
-            Imgproc.GaussianBlur(gray, gray, Size(5.0, 5.0), 0.0)
-            val minArea = gray.rows() * gray.cols() * MIN_AREA_FRACTION
-            val found = findQuad(edgeMask(gray), minArea) ?: findQuad(thresholdMask(gray), minArea)
-            return found?.scaled(1.0 / s)?.clampedTo(bitmap.width, bitmap.height)
+            return detectInGray(gray)?.scaled(1.0 / s)?.clampedTo(bitmap.width, bitmap.height)
         } finally {
             rgba.release()
             gray.release()
             if (small !== bitmap) small.recycle()
+        }
+    }
+
+    /** Detects in a grayscale image already at about [DETECT_MAX_DIM]. Leaves [gray] unchanged. */
+    fun detectInGray(gray: Mat): Quad? {
+        val blurred = Mat()
+        try {
+            Imgproc.GaussianBlur(gray, blurred, Size(5.0, 5.0), 0.0)
+            val minArea = blurred.rows() * blurred.cols() * MIN_AREA_FRACTION
+            return findQuad(edgeMask(blurred), minArea) ?: findQuad(thresholdMask(blurred), minArea)
+        } finally {
+            blurred.release()
         }
     }
 

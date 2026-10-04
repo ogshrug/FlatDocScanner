@@ -19,6 +19,7 @@ import com.example.docscanner.scan.ImageProcessor
 import com.example.docscanner.scan.PageDetector
 import com.example.docscanner.scan.PageFilter
 import com.example.docscanner.scan.Quad
+import com.example.docscanner.scan.ScanPipeline
 import com.example.docscanner.util.Bitmaps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -44,7 +45,7 @@ class CropActivity : AppCompatActivity() {
     private var source: Bitmap? = null
     private var warped: Bitmap? = null
     private var preview: Bitmap? = null
-    private var filter = PageFilter.COLOR
+    private var filter = ScanPipeline.DEFAULT_FILTER
     private var detected = false
     private var job: Job? = null
 
@@ -82,7 +83,7 @@ class CropActivity : AppCompatActivity() {
             val page = if (pageId >= 0) repository.getPage(pageId) else null
             editingPage = page
             val file = page?.let { File(it.originalPath) } ?: capture
-            val bitmap = file?.let { withContext(Dispatchers.IO) { Bitmaps.decode(it, WORKING_MAX_DIM) } }
+            val bitmap = file?.let { withContext(Dispatchers.IO) { Bitmaps.decode(it, ScanPipeline.WORKING_MAX_DIM) } }
             if (bitmap == null) {
                 Toast.makeText(this@CropActivity, R.string.image_load_failed, Toast.LENGTH_SHORT).show()
                 cancel()
@@ -226,9 +227,6 @@ class CropActivity : AppCompatActivity() {
         const val EXTRA_DOCUMENT_ID = "document_id"
         private const val EXTRA_CAPTURE_PATH = "capture_path"
         private const val EXTRA_PAGE_ID = "page_id"
-
-        /** Long side of the image used for detection, cropping and the saved page. */
-        private const val WORKING_MAX_DIM = 3000
 
         fun newPageIntent(context: Context, capture: File, documentId: Long?) =
             Intent(context, CropActivity::class.java)

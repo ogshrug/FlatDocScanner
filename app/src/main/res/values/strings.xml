@@ -39,6 +39,22 @@
     <string name="document_subtitle">%1$s · %2$s</string>
     <string name="page_number">Page %d</string>
     <string name="camera_no_pages">Point at a page and tap the shutter</string>
+    <string name="camera_saving">%1$s · saving…</string>
+
+    <string name="auto_on">Auto</string>
+    <string name="auto_off">Manual</string>
+    <string name="auto_on_description">Auto-capture is on. Tap to switch to manual.</string>
+    <string name="auto_off_description">Auto-capture is off. Tap to switch to auto.</string>
+    <string name="auto_turned_on">Auto-capture on: hold still over a page, then turn the page for the next one</string>
+
+    <string name="status_no_page">Looking for a page</string>
+    <string name="status_too_small">Move closer to the page</string>
+    <string name="status_blurry">Hold steady while it focuses</string>
+    <string name="status_hold_still">Hold still</string>
+    <string name="status_ready_manual">Page found. Tap the shutter</string>
+    <string name="status_capturing">Capturing</string>
+    <string name="status_turn_page">Turn the page</string>
+    <string name="auto_save_failed">A page couldn\'t be saved. Try that page again.</string>
 
     <string name="camera_permission_denied">FlatDocScanner needs the camera to scan. You can still import photos from your gallery.</string>
     <string name="camera_failed">The camera couldn\'t start. Close other camera apps and try again.</string>
