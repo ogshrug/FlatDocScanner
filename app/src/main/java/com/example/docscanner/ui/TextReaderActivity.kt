@@ -55,21 +55,27 @@ class TextReaderActivity : AppCompatActivity() {
 
         binding.toolbar.setNavigationOnClickListener { finish() }
         binding.toolbar.setOnMenuItemClickListener {
-            val page = currentPage()
-            val text = page?.let { p -> PageTextCodec.decode(p.ocr) }
-            when (it.itemId) {
-                R.id.action_read_aloud -> if (reading) stopReading() else startReading()
-                R.id.action_copy -> text?.plain()?.takeIf { t -> t.isNotBlank() }?.let { t ->
-                    getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(binding.toolbar.title, t))
-                    Toast.makeText(this, R.string.text_copied, Toast.LENGTH_SHORT).show()
-                }
-                R.id.action_share_page_text -> text?.plain()?.takeIf { t -> t.isNotBlank() }?.let { t ->
-                    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t)
-                    startActivity(Intent.createChooser(send, getString(R.string.share_text_chooser)))
-                }
-                R.id.action_remove_page_text -> page?.let { p -> lifecycleScope.launch { repository.removeText(p.id) } }
-            }
+            currentPage()?.let { p -> lifecycleScope.launch { repository.removeText(p.id) } }
             true
+        }
+        binding.actionCopy.setOnClickListener {
+            currentText()?.let { t ->
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(binding.toolbar.title, t))
+                Toast.makeText(this, R.string.text_copied, Toast.LENGTH_SHORT).show()
+            }
+        }
+        binding.actionShare.setOnClickListener {
+            currentText()?.let { t ->
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, t)
+                startActivity(Intent.createChooser(send, getString(R.string.share_text_chooser)))
+            }
+        }
+        binding.actionRead.setOnClickListener { if (reading) stopReading() else startReading() }
+
+        // Image | Text: Image goes back to the page image, at the page shown here.
+        binding.modeSwitch.group.check(R.id.modeText)
+        binding.modeSwitch.group.addOnButtonCheckedListener { _, id, checked ->
+            if (checked && id == R.id.modeImage) finish()
         }
 
         binding.pager.adapter = adapter
@@ -84,6 +90,7 @@ class TextReaderActivity : AppCompatActivity() {
         val startPageId = savedInstanceState?.getLong(EXTRA_PAGE_ID) ?: intent.getLongExtra(EXTRA_PAGE_ID, -1L)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { repository.observeDocument(documentId).collect { doc -> doc?.let { binding.toolbar.title = it.title } } }
                 repository.observePages(documentId).collect { pages ->
                     if (pages.isEmpty()) {
                         finish()
@@ -117,9 +124,18 @@ class TextReaderActivity : AppCompatActivity() {
 
     private fun currentPage(): PageEntity? = adapter.pages.getOrNull(binding.pager.currentItem)
 
+    private fun currentText(): String? =
+        currentPage()?.let { PageTextCodec.decode(it.ocr) }?.paragraphs()?.joinToString("\n\n")?.takeIf { it.isNotBlank() }
+
+    override fun finish() {
+        currentPage()?.let { setResult(RESULT_OK, Intent().putExtra(RESULT_PAGE_ID, it.id)) }
+        super.finish()
+        overridePendingTransition(0, 0)
+    }
+
     private fun updateTitle() {
         val n = adapter.pages.size
-        if (n > 0) binding.toolbar.title = getString(R.string.text_reader_title, binding.pager.currentItem + 1, n)
+        if (n > 0) binding.toolbar.subtitle = getString(R.string.viewer_subtitle, binding.pager.currentItem + 1, n)
     }
 
     // --- read aloud ----------------------------------------------------------------------
@@ -188,10 +204,10 @@ class TextReaderActivity : AppCompatActivity() {
     }
 
     private fun updateReadButton() {
-        binding.toolbar.menu.findItem(R.id.action_read_aloud)?.apply {
-            setIcon(if (reading) R.drawable.ic_stop else R.drawable.ic_read_aloud)
-            setTitle(if (reading) R.string.action_stop_reading else R.string.action_read_aloud)
-        }
+        binding.actionRead.setText(if (reading) R.string.action_stop_reading else R.string.action_read_aloud)
+        binding.actionRead.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            0, if (reading) R.drawable.ic_stop else R.drawable.ic_read_aloud, 0, 0,
+        )
     }
 
     private fun localeFor(script: Script): Locale =
@@ -250,6 +266,7 @@ class TextReaderActivity : AppCompatActivity() {
         private const val EXTRA_DOCUMENT_ID = "document_id"
         private const val EXTRA_PAGE_ID = "page_id"
         private const val LAST_CHUNK = "last"
+        const val RESULT_PAGE_ID = "result_page_id"
 
         fun intent(context: Context, documentId: Long, pageId: Long) =
             Intent(context, TextReaderActivity::class.java)

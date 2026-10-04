@@ -11,12 +11,50 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         app:menu="@menu/text_reader"
-        app:navigationContentDescription="@string/action_close"
-        app:navigationIcon="@drawable/ic_close" />
+        app:navigationContentDescription="@string/action_back"
+        app:navigationIcon="@drawable/ic_arrow_back" />
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/pager"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <include
+            android:id="@+id/modeSwitch"
+            layout="@layout/view_mode_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/actionBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_low"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/actionCopy"
+            style="@style/Widget.DocScanner.BarAction"
+            android:text="@string/action_copy_all"
+            app:drawableTopCompat="@drawable/ic_copy" />
+
+        <TextView
+            android:id="@+id/actionShare"
+            style="@style/Widget.DocScanner.BarAction"
+            android:text="@string/action_share"
+            app:drawableTopCompat="@drawable/ic_share" />
+
+        <TextView
+            android:id="@+id/actionRead"
+            style="@style/Widget.DocScanner.BarAction"
+            android:text="@string/action_read_aloud"
+            app:drawableTopCompat="@drawable/ic_read_aloud" />
+    </LinearLayout>
 </LinearLayout>

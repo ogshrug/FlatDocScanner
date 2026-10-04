@@ -7,6 +7,10 @@
         android:required="false" />
 
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Only for saving to the gallery on Android 7-9; newer versions need no permission. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:name=".DocScannerApp"
@@ -43,6 +47,14 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.TrashActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.TextReaderActivity"
             android:exported="false" />
 
@@ -68,6 +80,12 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
+
+        <!-- The app's own import (into a chosen folder); not reachable from other apps. -->
+        <activity-alias
+            android:name=".ui.ImportIntoFolder"
+            android:exported="false"
+            android:targetActivity=".ui.ImportActivity" />
 
         <activity
             android:name=".ui.PageViewerActivity"

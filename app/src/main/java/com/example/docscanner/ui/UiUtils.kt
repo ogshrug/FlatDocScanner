@@ -59,6 +59,34 @@ fun View.padForSystemBars(top: Boolean = false, bottom: Boolean = false) {
     }
 }
 
+/** Asks for a short text (folder name, rename) in a dialog; [onDone] gets the trimmed, non-empty text. */
+fun androidx.appcompat.app.AppCompatActivity.promptText(
+    title: Int,
+    initial: String,
+    positive: Int,
+    onDone: (String) -> Unit,
+) {
+    val pad = (20 * resources.displayMetrics.density).toInt()
+    val input = android.widget.EditText(this).apply {
+        setText(initial)
+        setSelectAllOnFocus(true)
+        isSingleLine = true
+    }
+    val container = android.widget.FrameLayout(this).apply {
+        setPadding(pad, pad / 2, pad, 0)
+        addView(input)
+    }
+    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        .setTitle(title)
+        .setView(container)
+        .setNegativeButton(com.example.docscanner.R.string.action_cancel, null)
+        .setPositiveButton(positive) { _, _ ->
+            input.text.toString().trim().takeIf { it.isNotEmpty() }?.let(onDone)
+        }
+        .show()
+    input.requestFocus()
+}
+
 /** Small decoded-thumbnail cache for list and grid items. Keys are file paths, which change on every re-save. */
 object Thumbnails {
     private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 8 / 1024).toInt()) {

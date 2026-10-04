@@ -1,25 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One page in the continuous reader view: full width, in its own proportions. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     style="?attr/materialCardViewOutlinedStyle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"
     android:layout_marginVertical="8dp"
-    android:checkable="true">
+    android:checkable="true"
+    app:checkedIcon="@null">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <com.example.docscanner.ui.HighlightImageView
-            android:id="@+id/image"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/white"
-            android:importantForAccessibility="no"
-            android:scaleType="fitCenter" />
+            android:layout_height="wrap_content">
+
+            <com.example.docscanner.ui.HighlightImageView
+                android:id="@+id/image"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/white"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/check"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="6dp"
+                android:importantForAccessibility="no"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/number"

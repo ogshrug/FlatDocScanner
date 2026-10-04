@@ -1,7 +1,9 @@
 package com.example.docscanner.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.graphics.RectF
 import android.os.Bundle
@@ -9,14 +11,20 @@ import android.view.HapticFeedbackConstants
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -30,9 +38,9 @@ import com.example.docscanner.data.PageEntity
 import com.example.docscanner.databinding.ActivityDocumentBinding
 import com.example.docscanner.databinding.ItemPageBinding
 import com.example.docscanner.databinding.ItemPageReaderBinding
+import com.example.docscanner.export.GalleryExporter
 import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.repository
-import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,9 +48,10 @@ import kotlinx.coroutines.withContext
 import java.util.Collections
 
 /**
- * Pages of one document (S03), as a grid or as a continuous reader. Search the recognised
- * text (matches are marked on the pages), share in several formats, reorder by holding and
- * dragging, select by holding. Tapping a page opens it full screen.
+ * A folder's pages (S03), as a grid or a continuous reader. The bottom bar imports, reads the
+ * text, shares, makes a PDF, and opens More (move, save to gallery, cover, crop, rotate, delete).
+ * Actions apply to the selected pages, or to all pages when nothing is selected. Hold a page to
+ * select it; hold and drag to reorder. Search marks matches on the pages.
  */
 class DocumentActivity : AppCompatActivity() {
 
@@ -62,18 +71,38 @@ class DocumentActivity : AppCompatActivity() {
         override fun handleOnBackPressed() = setSelecting(false)
     }
 
+    private val pickImages = registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(50)) { uris ->
+        if (uris.isNotEmpty()) startActivity(ImportActivity.intent(this, uris, documentId))
+    }
+
+    /** Android 7-9 need storage permission to save to the gallery. */
+    private var pendingGallery: List<PageEntity> = emptyList()
+    private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) saveToGallery(pendingGallery)
+        else Toast.makeText(this, R.string.gallery_permission_needed, Toast.LENGTH_LONG).show()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableDarkEdgeToEdge()
         binding = ActivityDocumentBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        binding.grid.padForSystemBars(bottom = true)
-        binding.addPageButton.liftAboveNavigationBar()
         onBackPressedDispatcher.addCallback(this, exitSelection)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottom) { v, insets ->
+            v.updatePadding(bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom)
+            insets
+        }
 
         binding.toolbar.setNavigationOnClickListener { if (selecting) setSelecting(false) else finish() }
         binding.toolbar.setOnMenuItemClickListener(::onMenuItem)
         binding.addPageButton.setOnClickListener { startActivity(CameraActivity.intent(this, documentId)) }
+        binding.actionImport.setOnClickListener {
+            pickImages.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+        binding.actionText.setOnClickListener { openText() }
+        binding.actionShare.setOnClickListener { showShareSheet(pagesForAction()) }
+        binding.actionPdf.setOnClickListener { createPdf(pagesForAction()) }
+        binding.actionMore.setOnClickListener { showMoreSheet() }
 
         readerMode = prefs.getBoolean(PREF_READER, false)
         binding.grid.adapter = adapter
@@ -92,7 +121,10 @@ class DocumentActivity : AppCompatActivity() {
                     }
                 }
                 launch {
-                    repository.observePages(documentId).collect { if (!dragging) adapter.submit(it) }
+                    repository.observePages(documentId).collect {
+                        if (!dragging) adapter.submit(it)
+                        binding.empty.isVisible = it.isEmpty()
+                    }
                 }
             }
         }
@@ -105,28 +137,24 @@ class DocumentActivity : AppCompatActivity() {
                 prefs.edit { putBoolean(PREF_READER, readerMode) }
                 applyViewMode()
             }
-            R.id.action_share_pdf -> sharePdf(currentPagesForAction())
-            R.id.action_share_images -> shareImages(currentPagesForAction())
-            R.id.action_share_zip -> shareZip(currentPagesForAction())
-            R.id.action_share_text -> shareText(currentPagesForAction(), markdown = false)
-            R.id.action_share_markdown -> shareText(currentPagesForAction(), markdown = true)
-            R.id.action_share_word -> shareWord(currentPagesForAction())
-            R.id.action_text_view -> adapter.allPages.firstOrNull()?.let {
-                startActivity(TextReaderActivity.intent(this, documentId, it.id))
-            }
             R.id.action_select -> setSelecting(true)
-            R.id.action_select_all -> selectAll()
-            R.id.action_recognize_all -> TextUi.recognizePages(this, adapter.allPages.toList())
-            R.id.action_recognize_selected -> {
-                val pages = currentPagesForAction()
-                setSelecting(false)
-                TextUi.recognizePages(this, pages)
+            R.id.action_select_all -> {
+                if (selected.size == adapter.pages.size) selected.clear() else adapter.pages.forEach { selected += it.id }
+                updateSelection()
             }
+            R.id.action_reverse -> lifecycleScope.launch { repository.reversePages(documentId) }
+            R.id.action_change_cover -> {
+                setSelecting(true)
+                Toast.makeText(this, R.string.change_cover_hint, Toast.LENGTH_LONG).show()
+            }
+            R.id.action_recognize_all -> TextUi.recognizePages(this, adapter.allPages.toList())
             R.id.action_remove_text_all -> TextUi.confirmRemoveAll(this, documentId)
             R.id.action_text_language -> TextUi.chooseScript(this)
-            R.id.action_delete_selected -> confirmDeleteSelected()
-            R.id.action_rename -> rename()
-            R.id.action_delete -> confirmDeleteDocument()
+            R.id.action_rename -> promptText(R.string.action_rename_folder, title, R.string.action_rename) { name ->
+                lifecycleScope.launch { repository.renameDocument(documentId, name) }
+            }
+            R.id.action_delete -> confirmDeleteFolder()
+            R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
         }
         return true
     }
@@ -134,7 +162,7 @@ class DocumentActivity : AppCompatActivity() {
     // --- view mode and search ------------------------------------------------------------
 
     private fun applyViewMode() {
-        val span = if (resources.configuration.screenWidthDp >= 600) 4 else 2
+        val span = if (resources.configuration.screenWidthDp >= 600) 5 else 3
         binding.grid.layoutManager = if (readerMode) LinearLayoutManager(this) else GridLayoutManager(this, span)
         binding.grid.adapter = adapter
         binding.toolbar.menu.findItem(R.id.action_view_mode)?.apply {
@@ -195,29 +223,25 @@ class DocumentActivity : AppCompatActivity() {
         binding.toolbar.setNavigationIcon(if (on) R.drawable.ic_close else R.drawable.ic_arrow_back)
         binding.toolbar.setNavigationContentDescription(if (on) R.string.action_cancel_selection else R.string.action_back)
         binding.addPageButton.isVisible = !on
-        updateSelectionTitle()
-        refreshChecks()
+        binding.actionImport.isEnabled = !on
+        updateSelection()
+    }
+
+    private fun updateSelection() {
+        binding.toolbar.title = if (selecting) {
+            if (selected.isEmpty()) getString(R.string.select_pages_hint)
+            else resources.getQuantityString(R.plurals.selected_count, selected.size, selected.size)
+        } else title
+        binding.toolbar.menu.findItem(R.id.action_select_all)?.setTitle(
+            if (selecting && selected.size == adapter.pages.size && adapter.pages.isNotEmpty()) R.string.action_deselect_all
+            else R.string.action_select_all,
+        )
+        adapter.refreshChecks()
     }
 
     private fun toggle(page: PageEntity) {
         if (!selected.add(page.id)) selected.remove(page.id)
-        refreshChecks()
-        updateSelectionTitle()
-    }
-
-    private fun selectAll() {
-        if (selected.size == adapter.pages.size) selected.clear() else adapter.pages.forEach { selected += it.id }
-        refreshChecks()
-        updateSelectionTitle()
-    }
-
-    /** Updates the ticks on visible pages without rebinding them, so a held page isn't interrupted. */
-    private fun refreshChecks() {
-        for (i in 0 until binding.grid.childCount) {
-            val holder = binding.grid.getChildViewHolder(binding.grid.getChildAt(i)) as? PageAdapter.Holder ?: continue
-            val page = adapter.pages.getOrNull(holder.bindingAdapterPosition) ?: continue
-            (holder.b.root as MaterialCardView).isChecked = selecting && page.id in selected
-        }
+        updateSelection()
     }
 
     /** Holding a page selects it (and starts selection mode); holding and dragging moves it. */
@@ -225,38 +249,156 @@ class DocumentActivity : AppCompatActivity() {
         val page = adapter.pages.getOrNull(position) ?: return
         if (!selecting) setSelecting(true)
         selected += page.id
-        refreshChecks()
-        updateSelectionTitle()
-    }
-
-    private fun updateSelectionTitle() {
-        binding.toolbar.title = if (selecting) {
-            if (selected.isEmpty()) getString(R.string.select_pages_hint)
-            else resources.getQuantityString(R.plurals.selected_count, selected.size, selected.size)
-        } else title
-        if (selecting) {
-            val any = selected.isNotEmpty()
-            listOf(R.id.action_share, R.id.action_delete_selected, R.id.action_recognize_selected).forEach {
-                binding.toolbar.menu.findItem(it)?.isEnabled = any
-            }
-        }
+        updateSelection()
     }
 
     /** Selected pages (in document order) while selecting, otherwise every page. */
-    private fun currentPagesForAction(): List<PageEntity> =
-        if (selecting) adapter.allPages.filter { it.id in selected } else adapter.allPages.toList()
+    private fun pagesForAction(): List<PageEntity> =
+        if (selecting && selected.isNotEmpty()) adapter.allPages.filter { it.id in selected } else adapter.allPages.toList()
+
+    /** Pages for actions that need an explicit selection (move, rotate, delete...). */
+    private fun selectedOrHint(): List<PageEntity>? {
+        val pages = adapter.allPages.filter { it.id in selected }
+        if (selecting && pages.isNotEmpty()) return pages
+        if (!selecting) setSelecting(true)
+        Toast.makeText(this, R.string.select_pages_first, Toast.LENGTH_LONG).show()
+        return null
+    }
 
     private fun pageNumber(page: PageEntity) = adapter.allPages.indexOfFirst { it.id == page.id } + 1
 
-    private fun confirmDeleteSelected() {
-        val pages = currentPagesForAction()
+    // --- bottom bar ----------------------------------------------------------------------
+
+    private fun openText() {
+        val first = pagesForAction().firstOrNull() ?: return
+        startActivity(TextReaderActivity.intent(this, documentId, first.id))
+    }
+
+    private fun createPdf(pages: List<PageEntity>) {
         if (pages.isEmpty()) return
-        val all = pages.size == adapter.allPages.size
+        PdfSheet.show(this, title) { name, options -> export(R.string.export_failed) { Sharing.pdf(this, pages, name, options) } }
+    }
+
+    private fun showShareSheet(pages: List<PageEntity>) {
+        if (pages.isEmpty()) return
+        val numbers = pages.map(::pageNumber)
+        ActionSheet.show(this, R.string.action_share, listOf(
+            ActionSheet.Action(R.drawable.ic_photo, R.string.share_as_images) {
+                export(R.string.export_images_failed) { Sharing.images(this, pages, numbers, title) }
+            },
+            ActionSheet.Action(R.drawable.ic_pdf, R.string.share_as_pdf) {
+                export(R.string.export_failed) { Sharing.pdf(this, pages, title) }
+            },
+            ActionSheet.Action(R.drawable.ic_zip, R.string.create_zip) {
+                export(R.string.export_images_failed) { Sharing.zip(this, pages, numbers, title) }
+            },
+            ActionSheet.Action(R.drawable.ic_txt, R.string.action_create_txt) {
+                withRecognisedText(pages) { Sharing.text(this, it, title, markdown = false) }
+            },
+            ActionSheet.Action(R.drawable.ic_text, R.string.share_as_markdown) {
+                withRecognisedText(pages) { Sharing.text(this, it, title, markdown = true) }
+            },
+            ActionSheet.Action(R.drawable.ic_txt, R.string.share_as_word) {
+                withRecognisedText(pages) { Sharing.word(this, it, title) }
+            },
+            ActionSheet.Action(R.drawable.ic_save_gallery, R.string.action_save_to_gallery) { saveToGallery(pages) },
+        ))
+    }
+
+    private fun showMoreSheet() {
+        val one = selecting && selected.size == 1
+        ActionSheet.show(this, R.string.action_more, listOf(
+            ActionSheet.Action(R.drawable.ic_text, R.string.action_recognize_selected) {
+                TextUi.recognizePages(this, pagesForAction())
+            },
+            ActionSheet.Action(R.drawable.ic_move, R.string.action_move) { selectedOrHint()?.let(::moveTo) },
+            ActionSheet.Action(R.drawable.ic_save_gallery, R.string.action_save_to_gallery) { saveToGallery(pagesForAction()) },
+            ActionSheet.Action(R.drawable.ic_cover, R.string.action_set_cover, enabled = one) {
+                val page = adapter.allPages.first { it.id in selected }
+                lifecycleScope.launch { repository.setCover(documentId, page.id) }
+                Toast.makeText(this, R.string.cover_set, Toast.LENGTH_SHORT).show()
+                setSelecting(false)
+            },
+            ActionSheet.Action(R.drawable.ic_txt, R.string.action_create_txt) {
+                withRecognisedText(pagesForAction()) { Sharing.text(this, it, title, markdown = false) }
+            },
+            ActionSheet.Action(R.drawable.ic_zip, R.string.create_zip) {
+                val pages = pagesForAction()
+                export(R.string.export_images_failed) { Sharing.zip(this, pages, pages.map(::pageNumber), title) }
+            },
+            ActionSheet.Action(R.drawable.ic_crop, R.string.action_crop, enabled = one || adapter.allPages.size == 1) {
+                val page = if (one) adapter.allPages.first { it.id in selected } else adapter.allPages.first()
+                startActivity(CropActivity.editPageIntent(this, page.id))
+            },
+            ActionSheet.Action(R.drawable.ic_rotate_left, R.string.action_rotate_left) { rotate(-90) },
+            ActionSheet.Action(R.drawable.ic_rotate_right, R.string.action_rotate_right) { rotate(90) },
+            ActionSheet.Action(R.drawable.ic_delete, R.string.action_delete, destructive = true) {
+                selectedOrHint()?.let(::confirmTrash)
+            },
+        ))
+    }
+
+    private fun rotate(degrees: Int) {
+        val pages = selectedOrHint() ?: return
+        binding.progress.isVisible = true
+        lifecycleScope.launch {
+            pages.forEach { runCatching { repository.rotatePage(it, degrees) } }
+            binding.progress.isVisible = false
+        }
+    }
+
+    private fun moveTo(pages: List<PageEntity>) {
+        lifecycleScope.launch {
+            val others = repository.getDocuments().filter { it.id != documentId }
+            val labels = arrayOf(getString(R.string.move_to_new_folder)) + others.map { it.title }
+            MaterialAlertDialogBuilder(this@DocumentActivity)
+                .setTitle(R.string.move_to_title)
+                .setItems(labels) { _, which ->
+                    if (which == 0) {
+                        promptText(R.string.new_folder_title, repository.defaultTitle(), R.string.action_create) { name ->
+                            lifecycleScope.launch { move(pages, repository.createDocument(name)) }
+                        }
+                    } else {
+                        lifecycleScope.launch { move(pages, others[which - 1].id) }
+                    }
+                }
+                .show()
+        }
+    }
+
+    private suspend fun move(pages: List<PageEntity>, target: Long) {
+        repository.movePages(pages, target)
+        setSelecting(false)
+        Toast.makeText(this, resources.getQuantityString(R.plurals.moved_pages, pages.size, pages.size), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun saveToGallery(pages: List<PageEntity>) {
+        if (pages.isEmpty()) return
+        if (GalleryExporter.needsPermission() &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingGallery = pages
+            storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            return
+        }
+        binding.progress.isVisible = true
+        lifecycleScope.launch {
+            val stamp = System.currentTimeMillis()
+            val n = withContext(Dispatchers.IO) {
+                GalleryExporter.save(this@DocumentActivity, pages.map { "${title}_${pageNumber(it)}_$stamp.jpg" to java.io.File(it.processedPath) })
+            }
+            binding.progress.isVisible = false
+            if (selecting) setSelecting(false)
+            Toast.makeText(this@DocumentActivity, resources.getQuantityString(R.plurals.saved_to_gallery, n, n), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun confirmTrash(pages: List<PageEntity>) {
         MaterialAlertDialogBuilder(this)
-            .setTitle(resources.getQuantityString(R.plurals.delete_pages_title, pages.size, pages.size))
-            .setMessage(if (all) R.string.delete_page_last_body else R.string.delete_page_body)
+            .setTitle(resources.getQuantityString(R.plurals.move_pages_to_trash, pages.size, pages.size))
+            .setMessage(R.string.trash_body)
             .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_delete) { _, _ ->
+            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
                 lifecycleScope.launch {
                     setSelecting(false)
                     pages.forEach { repository.deletePage(it) }
@@ -265,14 +407,12 @@ class DocumentActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- document actions --------------------------------------------------------------
-
-    private fun confirmDeleteDocument() {
+    private fun confirmDeleteFolder() {
         MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.delete_document_title)
-            .setMessage(R.string.delete_document_body)
+            .setTitle(resources.getQuantityString(R.plurals.move_folders_to_trash, 1, 1))
+            .setMessage(R.string.trash_body)
             .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_delete) { _, _ ->
+            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
                 lifecycleScope.launch {
                     repository.deleteDocument(documentId)
                     finish()
@@ -280,54 +420,6 @@ class DocumentActivity : AppCompatActivity() {
             }
             .show()
     }
-
-    private fun rename() {
-        val pad = (20 * resources.displayMetrics.density).toInt()
-        val input = EditText(this).apply {
-            setText(title)
-            setSelectAllOnFocus(true)
-            isSingleLine = true
-        }
-        val container = FrameLayout(this).apply {
-            setPadding(pad, pad / 2, pad, 0)
-            addView(input)
-        }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.rename_title)
-            .setView(container)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_rename) { _, _ ->
-                val newTitle = input.text.toString().trim()
-                if (newTitle.isNotEmpty()) lifecycleScope.launch { repository.renameDocument(documentId, newTitle) }
-            }
-            .show()
-        input.requestFocus()
-    }
-
-    // --- sharing -----------------------------------------------------------------------
-
-    private fun sharePdf(pages: List<PageEntity>) {
-        if (pages.isEmpty()) return
-        export(R.string.export_failed) { Sharing.pdf(this, pages, title) }
-    }
-
-    private fun shareImages(pages: List<PageEntity>) {
-        if (pages.isEmpty()) return
-        val numbers = pages.map(::pageNumber)
-        export(R.string.export_images_failed) { Sharing.images(this, pages, numbers, title) }
-    }
-
-    private fun shareZip(pages: List<PageEntity>) {
-        if (pages.isEmpty()) return
-        val numbers = pages.map(::pageNumber)
-        export(R.string.export_images_failed) { Sharing.zip(this, pages, numbers, title) }
-    }
-
-    private fun shareText(pages: List<PageEntity>, markdown: Boolean) =
-        withRecognisedText(pages) { now -> Sharing.text(this, now, title, markdown) }
-
-    private fun shareWord(pages: List<PageEntity>) =
-        withRecognisedText(pages) { now -> Sharing.word(this, now, title) }
 
     /** Text exports need recognised text: offers to recognise it first if none of [pages] has any. */
     private fun withRecognisedText(pages: List<PageEntity>, build: (List<PageEntity>) -> Intent) {
@@ -369,13 +461,13 @@ class DocumentActivity : AppCompatActivity() {
     // --- pages ---------------------------------------------------------------------------
 
     private inner class PageAdapter : RecyclerView.Adapter<PageAdapter.Holder>() {
-        /** Every page of the document, in order. */
+        /** Every page of the folder, in order. */
         val allPages = mutableListOf<PageEntity>()
         /** The pages shown: all of them, or the search matches. */
         val pages = mutableListOf<PageEntity>()
         private val aspects = HashMap<String, Float>()
 
-        inner class Holder(val b: ViewBinding, val image: HighlightImageView, val number: android.widget.TextView) :
+        inner class Holder(val b: ViewBinding, val image: HighlightImageView, val number: TextView, val check: ImageView) :
             RecyclerView.ViewHolder(b.root)
 
         fun submit(list: List<PageEntity>) {
@@ -383,7 +475,7 @@ class DocumentActivity : AppCompatActivity() {
             allPages.addAll(list)
             selected.retainAll(list.map { it.id }.toSet())
             refilter()
-            if (selecting) updateSelectionTitle()
+            if (selecting) updateSelection()
         }
 
         fun refilter() {
@@ -405,6 +497,22 @@ class DocumentActivity : AppCompatActivity() {
             notifyItemMoved(from, to)
         }
 
+        /** Updates the selection circles on visible pages without rebinding them (a held page keeps its drag). */
+        fun refreshChecks() {
+            for (i in 0 until binding.grid.childCount) {
+                val holder = binding.grid.getChildViewHolder(binding.grid.getChildAt(i)) as? Holder ?: continue
+                pages.getOrNull(holder.bindingAdapterPosition)?.let { bindCheck(holder, it) }
+            }
+        }
+
+        private fun bindCheck(holder: Holder, page: PageEntity) {
+            holder.check.isVisible = selecting
+            val on = page.id in selected
+            holder.check.setImageResource(if (on) R.drawable.ic_check_circle else R.drawable.ic_circle_outline)
+            holder.check.imageTintList = if (on) getColorStateList(R.color.accent) else null
+            (holder.b.root as com.google.android.material.card.MaterialCardView).isChecked = selecting && on
+        }
+
         override fun getItemCount() = pages.size
 
         override fun getItemViewType(position: Int) = if (readerMode) 1 else 0
@@ -413,28 +521,29 @@ class DocumentActivity : AppCompatActivity() {
             val inflater = LayoutInflater.from(parent.context)
             return if (viewType == 1) {
                 val b = ItemPageReaderBinding.inflate(inflater, parent, false)
-                Holder(b, b.image, b.number)
+                Holder(b, b.image, b.number, b.check)
             } else {
                 val b = ItemPageBinding.inflate(inflater, parent, false)
-                Holder(b, b.image, b.number)
+                b.image.aspect = 1.414f
+                Holder(b, b.image, b.number, b.check)
             }
         }
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val page = pages[position]
-            val label = getString(R.string.page_number, pageNumber(page))
+            val label = pageNumber(page).toString()
             holder.number.text = if (page.ocr != null) getString(R.string.text_page_label, label) else label
-            (holder.b.root as MaterialCardView).isChecked = selecting && page.id in selected
+            bindCheck(holder, page)
             holder.image.highlights = matches(page)
             if (readerMode) holder.image.aspect = aspectOf(page.processedPath)
-            Thumbnails.load(holder.image, page.processedPath, if (readerMode) 1080 else 512, lifecycleScope)
+            Thumbnails.load(holder.image, page.processedPath, if (readerMode) 1080 else 400, lifecycleScope)
             holder.b.root.setOnClickListener {
                 val pos = holder.bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
                 if (selecting) toggle(pages[pos])
                 else startActivity(PageViewerActivity.intent(this@DocumentActivity, documentId, pages[pos].id, query))
             }
-            // The reader view has no drag-to-reorder, so holding there just selects.
+            // The reader view and search results have no drag-to-reorder, so holding there just selects.
             holder.b.root.setOnLongClickListener {
                 if (!readerMode && query.isEmpty()) return@setOnLongClickListener false
                 holder.b.root.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)

@@ -97,11 +97,18 @@ object ScanPipeline {
     }
 
     /** Saves both pages of a book spread photo, left then right. Returns the document id. */
-    suspend fun saveSpread(repository: ScanRepository, capture: File, documentId: Long?, liveQuad: Quad?): Long {
+    suspend fun saveSpread(
+        repository: ScanRepository,
+        capture: File,
+        documentId: Long?,
+        liveQuad: Quad?,
+        leftPageFirst: Boolean = true,
+    ): Long {
         val rendered = withContext(Dispatchers.Default) {
             val photo = Bitmaps.decode(capture, WORKING_MAX_DIM) ?: error("could not decode capture")
             try {
-                specsForSpread(photo, liveQuad).map { it to render(photo, it) }
+                // Right-to-left books (Arabic, Hebrew, Japanese...) read the right page first.
+                specsForSpread(photo, liveQuad).let { if (leftPageFirst) it else it.reversed() }.map { it to render(photo, it) }
             } finally {
                 photo.recycle()
             }

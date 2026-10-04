@@ -14,7 +14,8 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="@string/app_name" />
+            app:menu="@menu/library"
+            app:title="@string/library_title" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.recyclerview.widget.RecyclerView
@@ -22,9 +23,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:paddingHorizontal="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="96dp"
+        android:paddingHorizontal="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="160dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
     <LinearLayout
@@ -39,7 +40,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/empty_title"
+            android:text="@string/library_empty_title"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
         <TextView
@@ -47,16 +48,64 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:gravity="center"
-            android:text="@string/empty_body"
+            android:text="@string/library_empty_body"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
     </LinearLayout>
 
-    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
-        android:id="@+id/scanButton"
+    <!-- Scan button above the action bar, both lifted above the system navigation bar. -->
+    <LinearLayout
+        android:id="@+id/bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/scanButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="12dp"
+            android:text="@string/action_scan"
+            app:icon="@drawable/ic_camera" />
+
+        <LinearLayout
+            android:id="@+id/actionBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/surface_low"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/actionImport"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_import_images"
+                app:drawableTopCompat="@drawable/ic_import" />
+
+            <TextView
+                android:id="@+id/actionPdf"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/create_pdf"
+                app:drawableTopCompat="@drawable/ic_pdf" />
+
+            <TextView
+                android:id="@+id/actionZip"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/create_zip"
+                app:drawableTopCompat="@drawable/ic_zip" />
+
+            <TextView
+                android:id="@+id/actionDelete"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_delete"
+                app:drawableTopCompat="@drawable/ic_delete" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:text="@string/action_scan"
-        app:icon="@drawable/ic_camera" />
+        android:layout_gravity="center"
+        android:visibility="gone" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

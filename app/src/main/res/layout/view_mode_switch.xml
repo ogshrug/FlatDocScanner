@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Image | Text pill above the bottom bar of the page viewer and the text view. -->
+<com.google.android.material.button.MaterialButtonToggleGroup xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/group"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:layout_marginBottom="10dp"
+    app:selectionRequired="true"
+    app:singleSelection="true">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/modeImage"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/mode_switch_bg"
+        android:minWidth="88dp"
+        android:text="@string/mode_image"
+        android:textColor="@color/mode_switch_text" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/modeText"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/mode_switch_bg"
+        android:minWidth="88dp"
+        android:text="@string/mode_text"
+        android:textColor="@color/mode_switch_text" />
+</com.google.android.material.button.MaterialButtonToggleGroup>

@@ -11,6 +11,7 @@ import com.example.docscanner.export.DocxExporter
 import com.example.docscanner.export.ImageExporter
 import com.example.docscanner.export.ZipExporter
 import com.example.docscanner.export.PdfExporter
+import com.example.docscanner.export.PdfOptions
 import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.ocr.TextExport
 import java.io.File
@@ -18,8 +19,8 @@ import java.io.File
 /** Builds share-sheet intents for pages. Call off the main thread: these write files. */
 object Sharing {
 
-    fun pdf(context: Context, pages: List<PageEntity>, title: String): Intent {
-        val file = File(freshDir(context), "${safe(title)}.pdf").also { PdfExporter.export(pages, it) }
+    fun pdf(context: Context, pages: List<PageEntity>, title: String, options: PdfOptions = PdfOptions()): Intent {
+        val file = File(freshDir(context), "${safe(title)}.pdf").also { PdfExporter.export(pages, it, options) }
         val send = Intent(Intent.ACTION_SEND)
             .setType("application/pdf")
             .putExtra(Intent.EXTRA_STREAM, uriFor(context, file))
@@ -67,6 +68,13 @@ object Sharing {
         val file = File(freshDir(context), "${safe(title)}.zip")
         val entries = pages.mapIndexed { i, p -> "${safe(title)} - page ${numbers[i]}.jpg" to File(p.processedPath) }
         file.outputStream().use { ZipExporter.write(entries, it) }
+        return fileIntent(context, file, "application/zip")
+    }
+
+    /** Images from several folders in one .zip; [named] pairs each page with its file name in the zip. */
+    fun zipNamed(context: Context, named: List<Pair<String, PageEntity>>, zipTitle: String): Intent {
+        val file = File(freshDir(context), "${safe(zipTitle)}.zip")
+        file.outputStream().use { out -> ZipExporter.write(named.map { (n, p) -> "${safe(n)}.jpg" to File(p.processedPath) }, out) }
         return fileIntent(context, file, "application/zip")
     }
 

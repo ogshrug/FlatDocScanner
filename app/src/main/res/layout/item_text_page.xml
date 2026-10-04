@@ -15,7 +15,7 @@
             android:lineSpacingMultiplier="1.25"
             android:paddingHorizontal="20dp"
             android:paddingTop="8dp"
-            android:paddingBottom="32dp"
+            android:paddingBottom="88dp"
             android:textAppearance="?attr/textAppearanceBodyLarge"
             android:textIsSelectable="true" />
     </androidx.core.widget.NestedScrollView>

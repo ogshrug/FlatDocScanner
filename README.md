@@ -32,12 +32,18 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
   - Black & white (adaptive threshold for a crisp "scanned" look)
 - **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
 - **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
+- **Library of folders**: a grid of covers with page counts; new empty folders; search, sort (modified / created / name); select folders to make one PDF or ZIP, or move them to the Trash
+- **Folder screen**: bottom bar with Import, Text, Share, Create PDF and More (move pages to another folder, save to gallery, set as cover, crop, rotate left/right, delete); actions apply to the selected pages or the whole folder
+- **Create PDF**: file name with quick templates (folder name, date), page size (fit, A4, Letter), quality, colour (as scanned, grayscale, black & white) and page order
+- **Trash**: deleted folders and pages can be restored for 30 days, then they are deleted for good
+- **Settings**: save scans to gallery, vibrate, two-page order (left or right page first, for right-to-left books), interval timer length, start in the camera, text recognition language, storage used
 - **Grid or reader view**: pages as a grid, or as a continuous full-width scroll like an e-book
 - **Search**: finds words in the recognised text and marks them on the page images, in the document and in the full-screen viewer
 - **Rotate** a page a quarter turn (kept when the page is re-cropped)
 - **Full-screen viewer**: tap a page to open it; swipe for the next or previous page, pinch or double-tap to zoom. While zoomed, a swipe pans the page and only turns it once you reach the edge. Edit, share and delete from the top bar.
 - **Share as images**: the whole document, one page, or a selection. Hold a page (or use **Select pages**) to start selecting; hold and drag to reorder instead.
 - **Text recognition (OCR), opt-in**: nothing is recognised unless you ask, for one page (**Recognize text** in the viewer, with Copy, Share and Remove), a selection, or the whole document. Runs on-device with ML Kit Text Recognition v2; **Text language** switches between Latin and Devanagari (Hindi, Marathi, Nepali… plus Latin). Pages with text show "· Text" in the grid; re-cropping a page clears its text.
+- **Image | Text switch** in the page viewer, like a reader app
 - **Text view**: the recognised text full screen, a page per swipe, with copy, share and **read aloud** (Android text-to-speech; continues onto the next page)
 - **Text exports**: share the document as **TXT** or **Markdown** (paragraphs re-flowed, words hyphenated across lines re-joined). **Word (.docx)** with a page break between pages. **PDF** adds an invisible text layer on recognised pages, so it is searchable and its text can be copied. Page images can also be shared as a **ZIP**.
 - **Library** of all scans with cover thumbnails, rename and delete
@@ -130,6 +136,10 @@ app/src/main/java/com/example/docscanner/
 │   ├── DocumentActivity.kt   Page grid, reorder, select, share
 │   ├── PageViewerActivity.kt Full-screen swipe-and-zoom viewer, rotate, search marks
 │   ├── TextReaderActivity.kt Full-screen recognised text with read aloud
+│   ├── TrashActivity.kt      Restore or delete for good
+│   ├── SettingsActivity.kt   Settings
+│   ├── PdfSheet.kt           Create PDF options
+│   ├── ActionSheet.kt        Grid of actions in a bottom sheet (More, Share)
 │   ├── ImportActivity.kt     Scans images shared to the app
 │   ├── HighlightImageView.kt Page image with search marks and fixed proportions
 │   ├── ZoomImageView.kt      Pinch/double-tap zoom that hands swipes to the pager at the edge

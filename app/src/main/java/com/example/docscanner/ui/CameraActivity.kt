@@ -32,6 +32,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.docscanner.R
 import com.example.docscanner.databinding.ActivityCameraBinding
 import com.example.docscanner.repository
+import com.example.docscanner.settings
 import com.example.docscanner.scan.AutoCapture
 import com.example.docscanner.scan.FrameAnalyzer
 import com.example.docscanner.scan.LiveFrame
@@ -143,8 +144,8 @@ class CameraActivity : AppCompatActivity() {
             if (autoMode) Toast.makeText(this, R.string.auto_turned_on, Toast.LENGTH_LONG).show()
         }
         binding.timerButton.setOnClickListener {
-            // Off -> 3 s -> 5 s -> off. Interval shooting and auto-capture are alternatives.
-            setTimer(when (timerSeconds) { 0 -> 3; 3 -> 5; else -> 0 })
+            // Off <-> every N seconds (N set in Settings). Interval shooting and auto-capture are alternatives.
+            setTimer(if (timerSeconds == 0) settings.timerSeconds else 0)
             if (timerSeconds > 0) {
                 Toast.makeText(this, getString(R.string.timer_turned_on, timerSeconds), Toast.LENGTH_LONG).show()
             }
@@ -328,7 +329,7 @@ class CameraActivity : AppCompatActivity() {
         val job = lifecycleScope.launch {
             saveLock.withLock {
                 runCatching {
-                    if (spread) ScanPipeline.saveSpread(repository, file, documentId, liveQuad)
+                    if (spread) ScanPipeline.saveSpread(repository, file, documentId, liveQuad, settings.leftPageFirst)
                     else ScanPipeline.savePage(repository, file, documentId, liveQuad)
                 }
                     .onSuccess { documentId = it }
@@ -434,7 +435,7 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun flash() {
-        binding.root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        if (settings.vibrate) binding.root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
         binding.flash.animate().cancel()
         binding.flash.alpha = 0.6f
         binding.flash.animate().alpha(0f).setDuration(180).start()

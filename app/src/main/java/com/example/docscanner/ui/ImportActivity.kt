@@ -54,7 +54,11 @@ class ImportActivity : AppCompatActivity() {
     private fun scan(uris: List<Uri>) {
         binding.progressBar.max = uris.size
         lifecycleScope.launch {
-            var documentId: Long? = null
+            // Into an existing folder only via the app's own (non-exported) entry point, so other
+            // apps sharing images can't add pages to a folder; otherwise a new folder.
+            val internal = intent.component?.className == INTERNAL_ENTRY
+            var documentId: Long? = if (internal) intent.getLongExtra(EXTRA_DOCUMENT_ID, -1L).takeIf { it >= 0 } else null
+            val intoExisting = documentId != null
             var failed = 0
             uris.forEachIndexed { i, uri ->
                 binding.progressText.text = getString(R.string.import_progress, i + 1, uris.size)
@@ -74,10 +78,29 @@ class ImportActivity : AppCompatActivity() {
             if (failed > 0) {
                 Toast.makeText(this@ImportActivity, resources.getQuantityString(R.plurals.import_failed, failed, failed), Toast.LENGTH_LONG).show()
             }
-            documentId?.let {
+            documentId?.takeIf { !intoExisting }?.let {
                 startActivity(DocumentActivity.intent(this@ImportActivity, it).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
             finish()
+        }
+    }
+
+    companion object {
+        const val EXTRA_DOCUMENT_ID = "document_id"
+        private const val INTERNAL_ENTRY = "com.example.docscanner.ui.ImportIntoFolder"
+
+        /** Scans picked photos into [documentId], or a new folder when null. */
+        fun intent(context: android.content.Context, uris: List<Uri>, documentId: Long?): Intent {
+            val intent = Intent().setClassName(context, INTERNAL_ENTRY)
+                .setAction(Intent.ACTION_SEND_MULTIPLE)
+                .setType("image/*")
+                .putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                .putExtra(EXTRA_DOCUMENT_ID, documentId ?: -1L)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.clipData = android.content.ClipData.newRawUri(null, uris[0]).apply {
+                uris.drop(1).forEach { addItem(android.content.ClipData.Item(it)) }
+            }
+            return intent
         }
     }
 }

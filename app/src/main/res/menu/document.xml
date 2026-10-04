@@ -13,38 +13,16 @@
         android:title="@string/action_view_reader"
         app:showAsAction="ifRoom" />
     <item
-        android:id="@+id/action_share"
-        android:icon="@drawable/ic_share"
-        android:title="@string/action_share"
-        app:showAsAction="ifRoom">
-        <menu>
-            <item
-                android:id="@+id/action_share_pdf"
-                android:title="@string/share_as_pdf" />
-            <item
-                android:id="@+id/action_share_images"
-                android:title="@string/share_as_images" />
-            <item
-                android:id="@+id/action_share_zip"
-                android:title="@string/share_as_zip" />
-            <item
-                android:id="@+id/action_share_text"
-                android:title="@string/share_as_text" />
-            <item
-                android:id="@+id/action_share_markdown"
-                android:title="@string/share_as_markdown" />
-            <item
-                android:id="@+id/action_share_word"
-                android:title="@string/share_as_word" />
-        </menu>
-    </item>
-    <item
-        android:id="@+id/action_text_view"
-        android:title="@string/action_text_view"
-        app:showAsAction="never" />
-    <item
         android:id="@+id/action_select"
         android:title="@string/action_select"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_reverse"
+        android:title="@string/action_reverse_order"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_change_cover"
+        android:title="@string/action_change_cover"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_recognize_all"
@@ -60,10 +38,14 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/action_rename"
-        android:title="@string/action_rename"
+        android:title="@string/action_rename_folder"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_delete"
-        android:title="@string/action_delete_document"
+        android:title="@string/action_delete_folder"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/action_settings"
         app:showAsAction="never" />
 </menu>

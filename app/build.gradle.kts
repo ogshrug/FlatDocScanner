@@ -38,6 +38,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
     androidResources {
         // The dewarping model is read straight from the APK.

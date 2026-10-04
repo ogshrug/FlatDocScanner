@@ -17,9 +17,57 @@
         android:layout_gravity="top"
         android:background="@color/scrim"
         android:minHeight="?attr/actionBarSize"
-        app:menu="@menu/page_viewer"
         app:navigationContentDescription="@string/action_back"
         app:navigationIcon="@drawable/ic_arrow_back" />
+
+    <LinearLayout
+        android:id="@+id/bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <include
+            android:id="@+id/modeSwitch"
+            layout="@layout/view_mode_switch" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/scrim"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/actionCrop"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_crop"
+                app:drawableTopCompat="@drawable/ic_crop" />
+
+            <TextView
+                android:id="@+id/actionShare"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_share"
+                app:drawableTopCompat="@drawable/ic_share" />
+
+            <TextView
+                android:id="@+id/actionPdf"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/create_pdf"
+                app:drawableTopCompat="@drawable/ic_pdf" />
+
+            <TextView
+                android:id="@+id/actionRotate"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_rotate"
+                app:drawableTopCompat="@drawable/ic_rotate_right" />
+
+            <TextView
+                android:id="@+id/actionMore"
+                style="@style/Widget.DocScanner.BarAction"
+                android:text="@string/action_more"
+                app:drawableTopCompat="@drawable/ic_more" />
+        </LinearLayout>
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/progress"

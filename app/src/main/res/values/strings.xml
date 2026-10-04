@@ -173,4 +173,136 @@
     <string name="tts_unavailable">Read aloud isn\'t available on this phone. Install a text-to-speech voice in system settings.</string>
     <string name="text_reader_title">%1$d / %2$d</string>
     <string name="text_not_recognized_body">The text on this page hasn\'t been recognized yet.</string>
+
+    <!-- Library -->
+    <string name="library_title">Library</string>
+    <string name="new_folder">New folder</string>
+    <string name="new_folder_title">New folder</string>
+    <string name="folder_name">Folder name</string>
+    <string name="action_create">Create</string>
+    <string name="library_empty_title">No folders yet</string>
+    <string name="library_empty_body">Tap Scan to photograph a document, or Import to scan photos you already have.</string>
+    <string name="search_folders">Search folders</string>
+    <string name="action_sort">Sort folders</string>
+    <string name="sort_modified">Last modified</string>
+    <string name="sort_created">Date created</string>
+    <string name="sort_name">Name</string>
+    <string name="action_trash">Trash</string>
+    <string name="action_settings">Settings</string>
+    <string name="action_import_images">Import</string>
+    <string name="create_pdf">Create PDF</string>
+    <string name="create_zip">Create ZIP</string>
+    <string name="action_more">More</string>
+    <string name="action_deselect_all">Deselect all</string>
+    <string name="select_folders_first">Select folders first. Hold a folder to start selecting.</string>
+    <string name="select_pages_first">Select pages first. Hold a page to start selecting.</string>
+    <plurals name="move_folders_to_trash">
+        <item quantity="one">Move %d folder to the Trash?</item>
+        <item quantity="other">Move %d folders to the Trash?</item>
+    </plurals>
+    <string name="trash_body">You can restore it from the Trash for 30 days.</string>
+    <string name="action_move_to_trash">Move to Trash</string>
+
+    <!-- Create PDF -->
+    <string name="create_pdf_title">Create PDF</string>
+    <string name="pdf_name">File name</string>
+    <string name="pdf_name_required">Enter a file name</string>
+    <string name="pdf_template_name_date">Folder name + date</string>
+    <string name="pdf_template_name">Folder name</string>
+    <string name="pdf_template_date">Date</string>
+    <string name="pdf_page_size">Page size</string>
+    <string name="pdf_size_fit">Fit to page</string>
+    <string name="pdf_size_a4">A4</string>
+    <string name="pdf_size_letter">Letter</string>
+    <string name="pdf_quality">Quality</string>
+    <string name="pdf_quality_max">Maximum</string>
+    <string name="pdf_quality_high">High</string>
+    <string name="pdf_quality_small">Smaller file</string>
+    <string name="pdf_color">Colour</string>
+    <string name="pdf_color_scanned">As scanned</string>
+    <string name="pdf_order">Page order</string>
+    <string name="pdf_order_forward">Forward</string>
+    <string name="pdf_order_reverse">Reverse</string>
+
+    <!-- Folder (document) screen -->
+    <string name="no_pages_title">No pages yet</string>
+    <string name="no_pages_body">Scan or import a page</string>
+    <string name="action_text">Text</string>
+    <string name="action_move">Move</string>
+    <string name="action_save_to_gallery">Save to gallery</string>
+    <string name="action_set_cover">Set as cover</string>
+    <string name="action_create_txt">Create TXT</string>
+    <string name="action_crop">Crop</string>
+    <string name="action_rotate_left">Rotate left</string>
+    <string name="action_rotate_right">Rotate right</string>
+    <string name="action_reverse_order">Reverse page order</string>
+    <string name="action_change_cover">Change cover</string>
+    <string name="action_rename_folder">Rename folder</string>
+    <string name="action_delete_folder">Delete folder</string>
+    <string name="move_to_title">Move to folder</string>
+    <string name="move_to_new_folder">New folder…</string>
+    <plurals name="moved_pages">
+        <item quantity="one">%d page moved</item>
+        <item quantity="other">%d pages moved</item>
+    </plurals>
+    <plurals name="saved_to_gallery">
+        <item quantity="one">%d image saved to Pictures/FlatDocScanner</item>
+        <item quantity="other">%d images saved to Pictures/FlatDocScanner</item>
+    </plurals>
+    <string name="cover_set">Cover changed</string>
+    <string name="change_cover_hint">Select one page, then Set as cover.</string>
+    <string name="crop_one_page">Select one page to crop.</string>
+    <plurals name="move_pages_to_trash">
+        <item quantity="one">Move %d page to the Trash?</item>
+        <item quantity="other">Move %d pages to the Trash?</item>
+    </plurals>
+    <string name="gallery_permission_needed">Saving to the gallery needs storage permission on this Android version.</string>
+
+    <!-- Viewer -->
+    <string name="viewer_subtitle">%1$d / %2$d</string>
+    <string name="mode_image">Image</string>
+    <string name="mode_text">Text</string>
+    <string name="action_copy_all">Copy all</string>
+
+    <!-- Trash -->
+    <string name="trash_title">Trash</string>
+    <string name="trash_empty">The Trash is empty</string>
+    <string name="trash_info">Items are deleted for good after 30 days.</string>
+    <string name="trash_folders">Folders</string>
+    <string name="trash_pages">Pages</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_delete_forever">Delete forever</string>
+    <string name="action_empty_trash">Empty Trash</string>
+    <string name="empty_trash_title">Empty the Trash?</string>
+    <string name="empty_trash_body">Everything in it is deleted for good. This can\'t be undone.</string>
+    <string name="delete_forever_title">Delete for good?</string>
+    <string name="delete_forever_body">This can\'t be undone.</string>
+    <string name="trash_page_from">From %1$s</string>
+    <string name="restored">Restored</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_camera">Camera</string>
+    <string name="settings_save_gallery">Save scans to gallery</string>
+    <string name="settings_save_gallery_summary">Also save each new page to Pictures/FlatDocScanner</string>
+    <string name="settings_vibrate">Vibrate when scanning</string>
+    <string name="settings_two_page_order">Two-page scan order</string>
+    <string name="settings_left_first">Left page first</string>
+    <string name="settings_right_first">Right page first (Arabic, Hebrew, Japanese…)</string>
+    <string name="settings_left_first_short">Left first</string>
+    <string name="settings_right_first_short">Right first</string>
+    <string name="script_latin_short">Latin</string>
+    <string name="script_devanagari_short">Devanagari</string>
+    <string name="settings_timer">Interval timer</string>
+    <string name="settings_timer_value">Every %d seconds</string>
+    <string name="settings_app">App</string>
+    <string name="settings_start_screen">Start screen</string>
+    <string name="settings_start_library">Library</string>
+    <string name="settings_start_camera">Camera</string>
+    <string name="settings_text_language">Text recognition language</string>
+    <string name="settings_storage">Storage used</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_licenses">Open source licences</string>
+    <string name="licenses_body">FlatDocScanner uses these open source projects:\n\n• UVDoc model (curved pages) — MIT, © 2023 Tanguy Magne\n• DocAligner model (page corners) — Apache 2.0, DocsaidLab\n• OpenCV — Apache 2.0\n• ONNX Runtime — MIT, Microsoft\n• ML Kit Text Recognition — Google\n• AndroidX, Material Components — Apache 2.0\n• Kotlin coroutines — Apache 2.0</string>
 </resources>

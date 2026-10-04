@@ -2,21 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_read_aloud"
-        android:icon="@drawable/ic_read_aloud"
-        android:title="@string/action_read_aloud"
-        app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_copy"
-        android:icon="@drawable/ic_copy"
-        android:title="@string/action_copy"
-        app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_share_page_text"
-        android:icon="@drawable/ic_share"
-        android:title="@string/action_share"
-        app:showAsAction="ifRoom" />
-    <item
         android:id="@+id/action_remove_page_text"
         android:title="@string/action_remove_text"
         app:showAsAction="never" />

@@ -12,6 +12,10 @@ data class DocumentEntity(
     val title: String,
     @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    /** Page shown on the folder card; null = the first page. */
+    @ColumnInfo(name = "cover_page_id") val coverPageId: Long? = null,
+    /** Set while the document is in the Trash. */
+    @ColumnInfo(name = "deleted_at") val deletedAt: Long? = null,
 )
 
 @Entity(
@@ -48,12 +52,22 @@ data class PageEntity(
     val ocr: String? = null,
     /** Clockwise rotation of the finished page, see [com.example.docscanner.scan.PageSpec.rotation]. */
     @ColumnInfo(defaultValue = "0") val rotation: Int = 0,
+    /** Set while the page is in the Trash. */
+    @ColumnInfo(name = "deleted_at") val deletedAt: Long? = null,
 )
 
 data class DocumentSummary(
     val id: Long,
     val title: String,
+    @ColumnInfo(name = "created_at") val createdAt: Long,
     @ColumnInfo(name = "updated_at") val updatedAt: Long,
+    @ColumnInfo(name = "deleted_at") val deletedAt: Long?,
     @ColumnInfo(name = "page_count") val pageCount: Int,
     @ColumnInfo(name = "cover_path") val coverPath: String?,
+)
+
+/** A page in the Trash, with the title of the document it came from. */
+data class TrashedPage(
+    @androidx.room.Embedded val page: PageEntity,
+    @ColumnInfo(name = "document_title") val documentTitle: String,
 )

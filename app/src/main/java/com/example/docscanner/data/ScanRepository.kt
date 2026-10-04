@@ -2,6 +2,8 @@ package com.example.docscanner.data
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.example.docscanner.AppSettings
+import com.example.docscanner.export.GalleryExporter
 import com.example.docscanner.ocr.PageText
 import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.ocr.Script
@@ -18,6 +20,8 @@ import java.util.UUID
 
 /** Owns the database and the page image files under `files/documents/<id>/`. */
 class ScanRepository(context: Context, private val dao: ScanDao) {
+
+    private val appContext = context.applicationContext
 
     private val documentsDir = File(context.filesDir, "documents")
 
@@ -62,6 +66,7 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
             ).withSpec(spec),
         )
         dao.touchDocument(docId, now)
+        if (AppSettings(appContext).saveToGallery) copyToGallery(processedFile)
         docId
     }
 
@@ -97,15 +102,15 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
      * and the rotation is stored, so re-cropping later keeps it. Recognised text is cleared
      * because its positions no longer match.
      */
-    suspend fun rotatePage(page: PageEntity) = withContext(Dispatchers.IO) {
+    suspend fun rotatePage(page: PageEntity, degrees: Int = 90) = withContext(Dispatchers.IO) {
         val src = File(page.processedPath)
         val bmp = android.graphics.BitmapFactory.decodeFile(src.path) ?: error("could not read page")
-        val turned = com.example.docscanner.scan.ImageProcessor.rotate(bmp, 90)
+        val turned = com.example.docscanner.scan.ImageProcessor.rotate(bmp, degrees)
         val newFile = File(src.parentFile, "page_${UUID.randomUUID()}.jpg")
         Bitmaps.writeJpeg(turned, newFile)
         bmp.recycle()
         turned.recycle()
-        dao.updatePage(page.copy(processedPath = newFile.path, rotation = (page.rotation + 90) % 360, ocr = null))
+        dao.updatePage(page.copy(processedPath = newFile.path, rotation = (page.rotation + degrees + 360) % 360, ocr = null))
         src.delete()
         dao.touchDocument(page.documentId, System.currentTimeMillis())
     }
@@ -120,23 +125,84 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
     suspend fun renameDocument(id: Long, title: String) =
         dao.renameDocument(id, title, System.currentTimeMillis())
 
-    /** Deletes a page; deletes the whole document when it was the last page. */
-    suspend fun deletePage(page: PageEntity) = withContext(Dispatchers.IO) {
+    /** "Save scans to gallery" setting: a copy of each new page. Skipped where permission is missing. */
+    private fun copyToGallery(page: File) {
+        val allowed = !GalleryExporter.needsPermission() ||
+            appContext.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (allowed) runCatching { GalleryExporter.save(appContext, listOf("scan_${System.currentTimeMillis()}.jpg" to page)) }
+    }
+
+    // --- folders -----------------------------------------------------------------------
+
+    fun observeTrashedDocuments() = dao.observeTrashedDocuments()
+    fun observeTrashedPages() = dao.observeTrashedPages()
+    suspend fun getDocuments() = dao.getDocuments()
+
+    /** An empty folder to scan or import into. */
+    suspend fun createDocument(title: String): Long {
+        val now = System.currentTimeMillis()
+        return dao.insertDocument(DocumentEntity(title = title, createdAt = now, updatedAt = now))
+    }
+
+    suspend fun setCover(documentId: Long, pageId: Long) = dao.setCover(documentId, pageId)
+
+    /** Reverses the page order, e.g. for a book scanned back to front. */
+    suspend fun reversePages(documentId: Long) = reorder(documentId, dao.getPages(documentId).map { it.id }.reversed())
+
+    /** Moves pages to the end of another folder, keeping their order. */
+    suspend fun movePages(pages: List<PageEntity>, targetDocumentId: Long) {
+        val now = System.currentTimeMillis()
+        var pos = dao.nextPosition(targetDocumentId)
+        pages.forEach { dao.movePage(it.id, targetDocumentId, pos++) }
+        pages.map { it.documentId }.distinct().forEach { source ->
+            dao.reorder(dao.getPages(source).map { it.id })
+            dao.touchDocument(source, now)
+        }
+        dao.touchDocument(targetDocumentId, now)
+    }
+
+    // --- trash -------------------------------------------------------------------------
+
+    /** Moves a page to the Trash. The folder stays, even when empty. */
+    suspend fun deletePage(page: PageEntity) {
+        dao.setPageDeleted(page.id, System.currentTimeMillis())
+        dao.reorder(dao.getPages(page.documentId).map { it.id })
+        dao.touchDocument(page.documentId, System.currentTimeMillis())
+    }
+
+    /** Moves a folder (with its pages) to the Trash. */
+    suspend fun deleteDocument(id: Long) = dao.setDocumentDeleted(id, System.currentTimeMillis())
+
+    /** Restores a page to the end of its folder. */
+    suspend fun restorePage(page: PageEntity) {
+        dao.movePage(page.id, page.documentId, dao.nextPosition(page.documentId))
+        dao.setPageDeleted(page.id, null)
+        dao.touchDocument(page.documentId, System.currentTimeMillis())
+    }
+
+    suspend fun restoreDocument(id: Long) = dao.setDocumentDeleted(id, null)
+
+    suspend fun purgePage(page: PageEntity) = withContext(Dispatchers.IO) {
         dao.deletePage(page.id)
         File(page.originalPath).delete()
         File(page.processedPath).delete()
-        val remaining = dao.getPages(page.documentId)
-        if (remaining.isEmpty()) {
-            deleteDocument(page.documentId)
-        } else {
-            dao.reorder(remaining.map { it.id })
-            dao.touchDocument(page.documentId, System.currentTimeMillis())
-        }
     }
 
-    suspend fun deleteDocument(id: Long) = withContext(Dispatchers.IO) {
+    suspend fun purgeDocument(id: Long) = withContext(Dispatchers.IO) {
         dao.deleteDocument(id)
         File(documentsDir, id.toString()).deleteRecursively()
+    }
+
+    suspend fun emptyTrash() {
+        dao.allTrashedPages().forEach { purgePage(it) }
+        dao.allTrashedDocuments().forEach { purgeDocument(it) }
+    }
+
+    /** Deletes for good whatever has been in the Trash longer than [TRASH_DAYS]. */
+    suspend fun purgeOldTrash() {
+        val before = System.currentTimeMillis() - TRASH_DAYS * 24L * 60 * 60 * 1000
+        dao.pagesTrashedBefore(before).forEach { purgePage(it) }
+        dao.documentsTrashedBefore(before).forEach { purgeDocument(it) }
     }
 
     private fun PageEntity.withSpec(spec: PageSpec) = copy(
@@ -149,11 +215,14 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         rotation = spec.rotation,
     )
 
-    private companion object {
+    companion object {
         /** ML Kit is accurate well below the full page size, and faster. */
-        const val OCR_MAX_DIM = 2400
+        private const val OCR_MAX_DIM = 2400
+
+        /** Days an item stays in the Trash before it is deleted for good. */
+        const val TRASH_DAYS = 30
     }
 
-    private fun defaultTitle(now: Long) =
+    fun defaultTitle(now: Long = System.currentTimeMillis()) =
         "Scan " + SimpleDateFormat("yyyy-MM-dd HH.mm", Locale.getDefault()).format(Date(now))
 }

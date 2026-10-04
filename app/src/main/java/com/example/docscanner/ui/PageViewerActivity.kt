@@ -51,21 +51,31 @@ class PageViewerActivity : AppCompatActivity() {
         binding = ActivityPageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.toolbar.padForSystemBars(top = true)
+        binding.bottom.padForSystemBars(bottom = true)
 
         binding.toolbar.setNavigationOnClickListener { finish() }
-        binding.toolbar.setOnMenuItemClickListener {
-            val page = currentPage() ?: return@setOnMenuItemClickListener true
-            when (it.itemId) {
-                R.id.action_text -> startActivity(TextReaderActivity.intent(this, documentId, page.id))
-                R.id.action_rotate -> lifecycleScope.launch {
-                    runCatching { repository.rotatePage(page) }
-                        .onFailure { Toast.makeText(this@PageViewerActivity, R.string.save_failed, Toast.LENGTH_LONG).show() }
+        binding.actionCrop.setOnClickListener { currentPage()?.let { startActivity(CropActivity.editPageIntent(this, it.id)) } }
+        binding.actionShare.setOnClickListener { currentPage()?.let(::showShareSheet) }
+        binding.actionPdf.setOnClickListener {
+            currentPage()?.let { page ->
+                PdfSheet.show(this, title) { name, options ->
+                    export { Sharing.pdf(this, listOf(page), name, options) }
                 }
-                R.id.action_edit -> startActivity(CropActivity.editPageIntent(this, page.id))
-                R.id.action_share_image -> share(page)
-                R.id.action_delete_page -> confirmDelete(page)
             }
-            true
+        }
+        binding.actionRotate.setOnClickListener { currentPage()?.let { rotate(it, 90) } }
+        binding.actionMore.setOnClickListener { currentPage()?.let(::showMoreSheet) }
+
+        // Image | Text: Text shows this page's recognised text; coming back returns to the image.
+        binding.modeSwitch.group.check(R.id.modeImage)
+        binding.modeSwitch.group.addOnButtonCheckedListener { group, id, checked ->
+            if (checked && id == R.id.modeText) {
+                currentPage()?.let { page ->
+                    textView.launch(TextReaderActivity.intent(this, documentId, page.id))
+                    overridePendingTransition(0, 0)
+                }
+                group.check(R.id.modeImage)
+            }
         }
 
         binding.pager.adapter = adapter
@@ -87,7 +97,10 @@ class PageViewerActivity : AppCompatActivity() {
                 }
                 launch {
                     repository.observePages(documentId).collect { pages ->
-                        if (pages.isEmpty()) return@collect
+                        if (pages.isEmpty()) {
+                            finish()
+                            return@collect
+                        }
                         // Stay on the same page after an edit or a deletion elsewhere in the list.
                         val keepId = if (positioned) currentPage()?.id else startPageId
                         val keepIndex = binding.pager.currentItem
@@ -112,7 +125,75 @@ class PageViewerActivity : AppCompatActivity() {
 
     private fun updateTitle() {
         val n = adapter.pages.size
-        if (n > 0) binding.toolbar.title = getString(R.string.viewer_title, binding.pager.currentItem + 1, n)
+        binding.toolbar.title = title
+        if (n > 0) binding.toolbar.subtitle = getString(R.string.viewer_subtitle, binding.pager.currentItem + 1, n)
+    }
+
+    /** The text view reports the page it ended on, so the image view follows. */
+    private val textView = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { r ->
+        val id = r.data?.getLongExtra(TextReaderActivity.RESULT_PAGE_ID, -1L) ?: -1L
+        val index = adapter.pages.indexOfFirst { it.id == id }
+        if (index >= 0) binding.pager.setCurrentItem(index, false)
+    }
+
+    private fun rotate(page: PageEntity, degrees: Int) {
+        binding.progress.isVisible = true
+        lifecycleScope.launch {
+            runCatching { repository.rotatePage(page, degrees) }
+                .onFailure { Toast.makeText(this@PageViewerActivity, R.string.save_failed, Toast.LENGTH_LONG).show() }
+            binding.progress.isVisible = false
+        }
+    }
+
+    private fun showShareSheet(page: PageEntity) {
+        val number = adapter.pages.indexOfFirst { it.id == page.id } + 1
+        ActionSheet.show(this, R.string.action_share, listOf(
+            ActionSheet.Action(R.drawable.ic_photo, R.string.share_as_images) { share(page) },
+            ActionSheet.Action(R.drawable.ic_pdf, R.string.share_as_pdf) { export { Sharing.pdf(this, listOf(page), "${title}_$number") } },
+            ActionSheet.Action(R.drawable.ic_save_gallery, R.string.action_save_to_gallery) { saveToGallery(page, number) },
+        ))
+    }
+
+    private fun showMoreSheet(page: PageEntity) {
+        ActionSheet.show(this, R.string.action_more, listOf(
+            ActionSheet.Action(R.drawable.ic_text, R.string.action_text_view) {
+                textView.launch(TextReaderActivity.intent(this, documentId, page.id))
+            },
+            ActionSheet.Action(R.drawable.ic_rotate_left, R.string.action_rotate_left) { rotate(page, -90) },
+            ActionSheet.Action(R.drawable.ic_rotate_right, R.string.action_rotate_right) { rotate(page, 90) },
+            ActionSheet.Action(R.drawable.ic_cover, R.string.action_set_cover) {
+                lifecycleScope.launch { repository.setCover(documentId, page.id) }
+                Toast.makeText(this, R.string.cover_set, Toast.LENGTH_SHORT).show()
+            },
+            ActionSheet.Action(R.drawable.ic_delete, R.string.action_delete, destructive = true) { confirmDelete(page) },
+        ))
+    }
+
+    private fun saveToGallery(page: PageEntity, number: Int) {
+        if (com.example.docscanner.export.GalleryExporter.needsPermission() &&
+            checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(this, R.string.gallery_permission_needed, Toast.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch {
+            val n = withContext(Dispatchers.IO) {
+                com.example.docscanner.export.GalleryExporter.save(
+                    this@PageViewerActivity, listOf("${title}_${number}_${System.currentTimeMillis()}.jpg" to File(page.processedPath)),
+                )
+            }
+            Toast.makeText(this@PageViewerActivity, resources.getQuantityString(R.plurals.saved_to_gallery, n, n), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun export(build: suspend () -> Intent) {
+        binding.progress.isVisible = true
+        lifecycleScope.launch {
+            val chooser = runCatching { withContext(Dispatchers.IO) { build() } }.getOrNull()
+            binding.progress.isVisible = false
+            if (chooser == null) Toast.makeText(this@PageViewerActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
+            else startActivity(chooser)
+        }
     }
 
     /** Pages left zoomed in come back at normal size. */
@@ -126,13 +207,15 @@ class PageViewerActivity : AppCompatActivity() {
 
     private fun toggleBars() {
         val show = !binding.toolbar.isVisible
-        binding.toolbar.animate().cancel()
-        if (show) {
-            binding.toolbar.alpha = 0f
-            binding.toolbar.isVisible = true
-            binding.toolbar.animate().alpha(1f).setDuration(150).start()
-        } else {
-            binding.toolbar.animate().alpha(0f).setDuration(150).withEndAction { binding.toolbar.isVisible = false }.start()
+        for (bar in listOf(binding.toolbar, binding.bottom)) {
+            bar.animate().cancel()
+            if (show) {
+                bar.alpha = 0f
+                bar.isVisible = true
+                bar.animate().alpha(1f).setDuration(150).start()
+            } else {
+                bar.animate().alpha(0f).setDuration(150).withEndAction { bar.isVisible = false }.start()
+            }
         }
     }
 
