@@ -20,7 +20,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Finger removal**: finds skin-coloured blobs touching the page edge, judged against that page's own paper colour so cream or yellowed paper isn't mistaken for skin, and inpaints them. On by default; switch per page.
 - **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
 - **Camera capture** with CameraX, plus **import from gallery**
-- **Automatic page detection** with OpenCV: edge and contour analysis finds the page's four corners, and a threshold-based pass catches low-contrast edges
+- **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 4.8 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
 - **Manual corner adjustment**: drag any corner, with a magnifier that shows exactly where it sits. If the corners cross, the outline turns red and saving is blocked until they're fixed.
 - **Perspective correction** squares the page from its four corners
 - **Filters**:
@@ -30,6 +30,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
   - Black & white (adaptive threshold for a crisp "scanned" look)
 - **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
 - **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
+- **Share as images**: the whole document, one page, or a selection. **Select pages** lets you tick pages to share as images or a PDF, or to delete.
 - **Library** of all scans with cover thumbnails, rename and delete
 - Everything is on-device: no account and no network access
 
@@ -91,12 +92,13 @@ app/src/main/java/com/example/docscanner/
 ├── DocScannerApp.kt          Application: loads OpenCV, creates the repository
 ├── scan/
 │   ├── Quad.kt               Corner geometry: ordering, convexity, output size (pure Kotlin)
-│   ├── PageDetector.kt       OpenCV page detection
+│   ├── PageDetector.kt       Page detection: corner model, then classical fallback
 │   ├── ImageProcessor.kt     Perspective warp and filters
 │   ├── FrameAnalyzer.kt      Live CameraX analyser: outline, sharpness, signature
 │   ├── AutoCapture.kt        Auto-capture and page-turn state machine (pure Kotlin)
 │   ├── ScanPipeline.kt       Photo → finished page (geometry, then finishing), auto-save
 │   ├── PageSpec.kt           Page settings, spine line fit, gutter gains (pure Kotlin)
+│   ├── CornerModel.kt        DocAligner page-corner model via ONNX Runtime
 │   ├── Dewarper.kt           UVDoc curved-page flattening via ONNX Runtime
 │   ├── SpineDetector.kt      Book gutter detection
 │   └── FingerRemover.kt      Finger detection and inpainting
@@ -106,6 +108,7 @@ app/src/main/java/com/example/docscanner/
 │   ├── AppDatabase.kt
 │   └── ScanRepository.kt     Database + page-image file management
 ├── export/PdfExporter.kt     PDF generation
+├── export/ImageExporter.kt   Page images for sharing
 ├── ui/
 │   ├── MainActivity.kt       Library
 │   ├── CameraActivity.kt     Live preview, auto/manual capture, import
@@ -117,6 +120,7 @@ app/src/main/java/com/example/docscanner/
 └── util/Bitmaps.kt           EXIF-aware sampled decoding, JPEG writing
 
 app/src/main/assets/uvdoc.onnx   UVDoc model (31 MB), exported by tools/export_uvdoc_onnx.py
+app/src/main/assets/docaligner_lcnet100.onnx   DocAligner LCNet-100 corner model (4.8 MB), as published by DocsaidLab
 tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTorch
 ```
 
@@ -127,6 +131,7 @@ tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTo
 | Language / UI | Kotlin, Android Views, Material 3 |
 | Camera | CameraX 1.6 |
 | Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
+| Page detection | DocAligner LCNet-100 via ONNX Runtime, OpenCV fallback |
 | Curved pages | UVDoc via ONNX Runtime 1.30 |
 | Storage | Room 2.8 (KSP) |
 | PDF | `android.graphics.pdf.PdfDocument` |
@@ -170,6 +175,7 @@ The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, m
 
 ## Third-party licenses
 
+- [DocAligner](https://github.com/DocsaidLab/DocAligner) model weights: Apache-2.0, DocsaidLab (license shipped in `assets/docaligner_LICENSE.txt`)
 - [UVDoc](https://github.com/tanguymagne/UVDoc) model weights: MIT, © 2023 Tanguy Magne (notice shipped in `assets/uvdoc_LICENSE.txt`)
 - [ONNX Runtime](https://github.com/microsoft/onnxruntime): MIT
 

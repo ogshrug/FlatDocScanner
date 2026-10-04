@@ -56,23 +56,21 @@ object ScanPipeline {
     }
 
     /**
-     * Chooses how to treat a single page: a clean 4-corner outline means a flat page; otherwise
-     * the page is probably curved, so the learned model flattens the area around it.
+     * A single page is cropped flat from its detected corners. With no outline at all (the page
+     * fills the frame, or nothing was found) the curved-page model flattens the whole photo.
      */
     fun specForSinglePage(photo: Bitmap, liveQuad: Quad?): PageSpec {
         val w = photo.width
         val h = photo.height
-        PageDetector.detect(photo)?.let { return PageSpec(it.normalized(w, h), PageMode.FLAT) }
-        PageDetector.detect(photo, loose = true)?.let { return PageSpec(it.normalized(w, h), PageMode.CURVED) }
-        return PageSpec(liveQuad?.takeIf { it.isConvex() }, PageMode.CURVED)
+        val quad = PageDetector.detect(photo)?.normalized(w, h) ?: liveQuad?.takeIf { it.isConvex() }
+        return if (quad != null) PageSpec(quad, PageMode.FLAT) else PageSpec(null, PageMode.CURVED)
     }
 
     /** The two pages of an open book: the spread's outline and its gutter. */
     fun specsForSpread(photo: Bitmap, liveQuad: Quad?): List<PageSpec> {
         val w = photo.width
         val h = photo.height
-        val spread = (PageDetector.detect(photo) ?: PageDetector.detect(photo, loose = true))?.normalized(w, h)
-            ?: liveQuad
+        val spread = PageDetector.detect(photo)?.normalized(w, h) ?: liveQuad
         val spine = SpineDetector.detect(photo, spread) ?: spread?.let { Spine.middleOf(it) } ?: Spine(0.5, 0.5)
         return listOf(PageSide.LEFT, PageSide.RIGHT).map {
             PageSpec(spread, PageMode.CURVED, it, spine)

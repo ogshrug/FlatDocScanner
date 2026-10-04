@@ -116,13 +116,11 @@ class CameraActivity : AppCompatActivity() {
         autoMode = prefs.getBoolean(PREF_AUTO, true)
         bookMode = prefs.getBoolean(PREF_BOOK, false)
         analyzer = FrameAnalyzer { frame -> runOnUiThread { onLiveFrame(frame) } }
-        analyzer.loose = bookMode
         updateAutoButton()
         updateBookButton()
         binding.bookButton.setOnClickListener {
             bookMode = !bookMode
             prefs.edit { putBoolean(PREF_BOOK, bookMode) }
-            analyzer.loose = bookMode
             updateBookButton()
             if (bookMode) Toast.makeText(this, R.string.book_turned_on, Toast.LENGTH_LONG).show()
         }
@@ -183,6 +181,7 @@ class CameraActivity : AppCompatActivity() {
                             .build(),
                     )
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
                     .also { it.setAnalyzer(analysisExecutor, analyzer) }
                 provider.unbindAll()

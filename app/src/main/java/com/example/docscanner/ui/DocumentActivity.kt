@@ -1,7 +1,9 @@
 package com.example.docscanner.ui
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -9,6 +11,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
@@ -23,6 +26,7 @@ import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
 import com.example.docscanner.databinding.ActivityDocumentBinding
 import com.example.docscanner.databinding.ItemPageBinding
+import com.example.docscanner.export.ImageExporter
 import com.example.docscanner.export.PdfExporter
 import com.example.docscanner.repository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -32,7 +36,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Collections
 
-/** Pages of one document (S03): reorder, edit, delete, add more, share as PDF. */
+/**
+ * Pages of one document (S03): reorder, edit, delete, add more, share as PDF or images.
+ * "Select pages" switches to a selection mode for sharing or deleting some pages only.
+ */
 class DocumentActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDocumentBinding
@@ -41,17 +48,28 @@ class DocumentActivity : AppCompatActivity() {
     private val adapter = PageAdapter()
     private var dragging = false
 
+    private var selecting = false
+    private val selected = linkedSetOf<Long>()
+    private val exitSelection = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() = setSelecting(false)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityDocumentBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.grid.padForSystemBars(bottom = true)
+        onBackPressedDispatcher.addCallback(this, exitSelection)
 
-        binding.toolbar.setNavigationOnClickListener { finish() }
+        binding.toolbar.setNavigationOnClickListener { if (selecting) setSelecting(false) else finish() }
         binding.toolbar.setOnMenuItemClickListener {
             when (it.itemId) {
-                R.id.action_share_pdf -> sharePdf()
+                R.id.action_share_pdf -> sharePdf(currentPagesForAction())
+                R.id.action_share_images -> shareImages(currentPagesForAction())
+                R.id.action_select -> setSelecting(true)
+                R.id.action_select_all -> selectAll()
+                R.id.action_delete_selected -> confirmDeleteSelected()
                 R.id.action_rename -> rename()
                 R.id.action_delete -> confirmDeleteDocument()
             }
@@ -70,7 +88,7 @@ class DocumentActivity : AppCompatActivity() {
                     repository.observeDocument(documentId).collect { doc ->
                         if (doc == null) finish() else {
                             title = doc.title
-                            binding.toolbar.title = doc.title
+                            if (!selecting) binding.toolbar.title = doc.title
                         }
                     }
                 }
@@ -81,13 +99,80 @@ class DocumentActivity : AppCompatActivity() {
         }
     }
 
+    // --- selection ---------------------------------------------------------------------
+
+    private fun setSelecting(on: Boolean) {
+        selecting = on
+        exitSelection.isEnabled = on
+        if (!on) selected.clear()
+        binding.toolbar.menu.clear()
+        binding.toolbar.inflateMenu(if (on) R.menu.document_selection else R.menu.document)
+        binding.toolbar.setNavigationIcon(if (on) R.drawable.ic_close else R.drawable.ic_arrow_back)
+        binding.toolbar.setNavigationContentDescription(if (on) R.string.action_cancel_selection else R.string.action_back)
+        binding.addPageButton.isVisible = !on
+        updateSelectionTitle()
+        @Suppress("NotifyDataSetChanged")
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun toggle(page: PageEntity, position: Int) {
+        if (!selected.add(page.id)) selected.remove(page.id)
+        adapter.notifyItemChanged(position)
+        updateSelectionTitle()
+    }
+
+    private fun selectAll() {
+        if (selected.size == adapter.pages.size) selected.clear() else adapter.pages.forEach { selected += it.id }
+        @Suppress("NotifyDataSetChanged")
+        adapter.notifyDataSetChanged()
+        updateSelectionTitle()
+    }
+
+    private fun updateSelectionTitle() {
+        binding.toolbar.title = if (selecting) {
+            if (selected.isEmpty()) getString(R.string.select_pages_hint)
+            else resources.getQuantityString(R.plurals.selected_count, selected.size, selected.size)
+        } else title
+        val any = selected.isNotEmpty()
+        listOf(R.id.action_share_images, R.id.action_share_pdf, R.id.action_delete_selected).forEach {
+            if (selecting) binding.toolbar.menu.findItem(it)?.isEnabled = any
+        }
+    }
+
+    /** Selected pages in document order while selecting, otherwise every page. */
+    private fun currentPagesForAction(): List<PageEntity> =
+        if (selecting) adapter.pages.filter { it.id in selected } else adapter.pages.toList()
+
+    private fun confirmDeleteSelected() {
+        val pages = currentPagesForAction()
+        if (pages.isEmpty()) return
+        val all = pages.size == adapter.pages.size
+        MaterialAlertDialogBuilder(this)
+            .setTitle(resources.getQuantityString(R.plurals.delete_pages_title, pages.size, pages.size))
+            .setMessage(if (all) R.string.delete_page_last_body else R.string.delete_page_body)
+            .setNegativeButton(R.string.action_cancel, null)
+            .setPositiveButton(R.string.action_delete) { _, _ ->
+                lifecycleScope.launch {
+                    setSelecting(false)
+                    pages.forEach { repository.deletePage(it) }
+                }
+            }
+            .show()
+    }
+
+    // --- single page actions ---------------------------------------------------------
+
     private fun showPageMenu(anchor: android.view.View, page: PageEntity, number: Int) {
         PopupMenu(this, anchor).apply {
             menu.add(0, 1, 0, R.string.title_crop)
-            menu.add(0, 2, 1, R.string.action_delete)
+            menu.add(0, 3, 1, R.string.action_share_image)
+            menu.add(0, 2, 2, R.string.action_delete)
             setOnMenuItemClickListener {
-                if (it.itemId == 1) startActivity(CropActivity.editPageIntent(this@DocumentActivity, page.id))
-                else confirmDeletePage(page, number)
+                when (it.itemId) {
+                    1 -> startActivity(CropActivity.editPageIntent(this@DocumentActivity, page.id))
+                    3 -> shareImages(listOf(page))
+                    else -> confirmDeletePage(page, number)
+                }
                 true
             }
             show()
@@ -105,6 +190,8 @@ class DocumentActivity : AppCompatActivity() {
             }
             .show()
     }
+
+    // --- document actions --------------------------------------------------------------
 
     private fun confirmDeleteDocument() {
         MaterialAlertDialogBuilder(this)
@@ -143,30 +230,60 @@ class DocumentActivity : AppCompatActivity() {
         input.requestFocus()
     }
 
-    private fun sharePdf() {
-        binding.progress.isVisible = true
-        lifecycleScope.launch {
-            val file = runCatching {
-                withContext(Dispatchers.IO) {
-                    val dir = File(cacheDir, "exports").apply { deleteRecursively(); mkdirs() }
-                    val name = title.replace(Regex("[^A-Za-z0-9 ._-]"), "_").ifBlank { "scan" }
-                    File(dir, "$name.pdf").also { PdfExporter.export(repository.getPages(documentId), it) }
-                }
-            }.getOrNull()
-            binding.progress.isVisible = false
-            if (file == null) {
-                Toast.makeText(this@DocumentActivity, R.string.export_failed, Toast.LENGTH_LONG).show()
-                return@launch
-            }
-            val uri = FileProvider.getUriForFile(this@DocumentActivity, "$packageName.fileprovider", file)
-            val send = Intent(Intent.ACTION_SEND)
+    // --- sharing -----------------------------------------------------------------------
+
+    private fun safeTitle() = title.replace(Regex("[^A-Za-z0-9 ._-]"), "_").ifBlank { "scan" }
+
+    private fun sharePdf(pages: List<PageEntity>) {
+        if (pages.isEmpty()) return
+        export(R.string.export_failed) {
+            val dir = File(cacheDir, "exports").apply { deleteRecursively(); mkdirs() }
+            val file = File(dir, "${safeTitle()}.pdf").also { PdfExporter.export(pages, it) }
+            Intent(Intent.ACTION_SEND)
                 .setType("application/pdf")
-                .putExtra(Intent.EXTRA_STREAM, uri)
+                .putExtra(Intent.EXTRA_STREAM, uriFor(file))
                 .putExtra(Intent.EXTRA_TITLE, file.name)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            startActivity(Intent.createChooser(send, getString(R.string.share_pdf_chooser)))
+                .let { Intent.createChooser(it, getString(R.string.share_pdf_chooser)) }
         }
     }
+
+    private fun shareImages(pages: List<PageEntity>) {
+        if (pages.isEmpty()) return
+        export(R.string.export_images_failed) {
+            val dir = File(cacheDir, "exports").apply { deleteRecursively(); mkdirs() }
+            val numbers = pages.map { p -> adapter.pages.indexOfFirst { it.id == p.id } + 1 }
+            val uris = ImageExporter.copyForSharing(pages, numbers, dir, safeTitle()).map(::uriFor)
+            val send = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+            }
+            send.setType("image/jpeg").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            // ClipData carries the read permission for every image, not just the first.
+            send.clipData = ClipData.newRawUri(null, uris[0]).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
+            Intent.createChooser(send, getString(R.string.share_images_chooser))
+        }
+    }
+
+    /** Runs [build] off the main thread with a spinner, then launches the share sheet it returns. */
+    private fun export(errorText: Int, build: () -> Intent) {
+        binding.progress.isVisible = true
+        lifecycleScope.launch {
+            val chooser = runCatching { withContext(Dispatchers.IO) { build() } }.getOrNull()
+            binding.progress.isVisible = false
+            if (chooser == null) {
+                Toast.makeText(this@DocumentActivity, errorText, Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            if (selecting) setSelecting(false)
+            startActivity(chooser)
+        }
+    }
+
+    private fun uriFor(file: File): Uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+
+    // --- grid ----------------------------------------------------------------------------
 
     private inner class PageAdapter : RecyclerView.Adapter<PageAdapter.Holder>() {
         val pages = mutableListOf<PageEntity>()
@@ -176,8 +293,10 @@ class DocumentActivity : AppCompatActivity() {
         fun submit(list: List<PageEntity>) {
             pages.clear()
             pages.addAll(list)
+            selected.retainAll(list.map { it.id }.toSet())
             @Suppress("NotifyDataSetChanged")
             notifyDataSetChanged()
+            if (selecting) updateSelectionTitle()
         }
 
         fun move(from: Int, to: Int) {
@@ -193,18 +312,22 @@ class DocumentActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val page = pages[position]
             holder.b.number.text = getString(R.string.page_number, position + 1)
+            holder.b.root.isChecked = selecting && page.id in selected
             Thumbnails.load(holder.b.image, page.processedPath, 512, lifecycleScope)
             holder.b.root.setOnClickListener {
                 val pos = holder.bindingAdapterPosition
-                if (pos != RecyclerView.NO_POSITION) showPageMenu(it, pages[pos], pos + 1)
+                if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
+                if (selecting) toggle(pages[pos], pos) else showPageMenu(it, pages[pos], pos + 1)
             }
         }
     }
 
-    /** Long-press and drag to reorder; the new order is saved when the page is dropped. */
+    /** Long-press and drag to reorder (not while selecting); saved when the page is dropped. */
     private inner class DragCallback : ItemTouchHelper.SimpleCallback(
         ItemTouchHelper.UP or ItemTouchHelper.DOWN or ItemTouchHelper.START or ItemTouchHelper.END, 0,
     ) {
+        override fun isLongPressDragEnabled() = !selecting
+
         override fun onMove(rv: RecyclerView, from: RecyclerView.ViewHolder, to: RecyclerView.ViewHolder): Boolean {
             dragging = true
             adapter.move(from.bindingAdapterPosition, to.bindingAdapterPosition)

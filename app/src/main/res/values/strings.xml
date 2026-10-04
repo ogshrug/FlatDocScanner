@@ -79,4 +79,23 @@
     <string name="delete_page_body">The page will be removed from this document. This can\'t be undone.</string>
     <string name="delete_page_last_body">This is the only page, so the whole document will be deleted.</string>
     <string name="share_pdf_chooser">Share PDF</string>
+    <string name="share_images_chooser">Share images</string>
+    <string name="export_images_failed">The images couldn\'t be prepared. Try again.</string>
+    <string name="action_select">Select pages</string>
+    <string name="action_select_all">Select all</string>
+    <string name="action_cancel_selection">Cancel selection</string>
+    <string name="action_share_images">Share as images</string>
+    <string name="action_share_images_all">Share all as images</string>
+    <string name="action_share_image">Share image</string>
+    <string name="action_share_pdf_selected">Share as PDF</string>
+    <string name="action_delete_selected">Delete selected</string>
+    <string name="select_pages_hint">Tap pages to select</string>
+    <plurals name="selected_count">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
+    <plurals name="delete_pages_title">
+        <item quantity="one">Delete %d page?</item>
+        <item quantity="other">Delete %d pages?</item>
+    </plurals>
 </resources>

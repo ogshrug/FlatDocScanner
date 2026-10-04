@@ -65,6 +65,38 @@ data class Quad(val tl: Pt, val tr: Pt, val br: Pt, val bl: Pt) {
         return true
     }
 
+    /** True when every corner angle is within [minDeg]..[maxDeg]; rules out slivers and kites. */
+    fun anglesWithin(minDeg: Double = 30.0, maxDeg: Double = 150.0): Boolean {
+        val p = points
+        for (i in p.indices) {
+            val a = p[(i + 3) % 4]
+            val b = p[i]
+            val c = p[(i + 1) % 4]
+            val ux = a.x - b.x
+            val uy = a.y - b.y
+            val vx = c.x - b.x
+            val vy = c.y - b.y
+            val norm = hypot(ux, uy) * hypot(vx, vy)
+            if (norm < 1e-9) return false
+            val deg = Math.toDegrees(kotlin.math.acos(((ux * vx + uy * vy) / norm).coerceIn(-1.0, 1.0)))
+            if (deg < minDeg || deg > maxDeg) return false
+        }
+        return true
+    }
+
+    /** How many sides lie along the image border; a page outline hugging 2+ borders is usually the background. */
+    fun sidesOnBorder(width: Int, height: Int, margin: Double = 6.0): Int {
+        val p = points
+        return p.indices.count { i ->
+            val a = p[i]
+            val b = p[(i + 1) % 4]
+            // Both ends on the same border.
+            (a.x < margin && b.x < margin) || (a.y < margin && b.y < margin) ||
+                (a.x > width - 1 - margin && b.x > width - 1 - margin) ||
+                (a.y > height - 1 - margin && b.y > height - 1 - margin)
+        }
+    }
+
     fun clampedTo(width: Int, height: Int): Quad {
         fun c(p: Pt) = Pt(p.x.coerceIn(0.0, width.toDouble()), p.y.coerceIn(0.0, height.toDouble()))
         return Quad(c(tl), c(tr), c(br), c(bl))
@@ -83,6 +115,24 @@ data class Quad(val tl: Pt, val tr: Pt, val br: Pt, val bl: Pt) {
             val start = clockwise.indices.minBy { clockwise[it].x + clockwise[it].y }
             val o = List(4) { clockwise[(start + it) % 4] }
             return Quad(o[0], o[1], o[2], o[3])
+        }
+
+        /**
+         * Builds a quad from corners in TL, TR, BR, BL order where at most one is missing:
+         * the missing corner completes the parallelogram of the other three.
+         */
+        fun completing(corners: List<Pt?>): Quad? {
+            require(corners.size == 4)
+            val missing = corners.indices.filter { corners[it] == null }
+            if (missing.size > 1) return null
+            val pts = corners.toMutableList()
+            missing.firstOrNull()?.let { i ->
+                val prev = pts[(i + 3) % 4]!!
+                val next = pts[(i + 1) % 4]!!
+                val opposite = pts[(i + 2) % 4]!!
+                pts[i] = Pt(prev.x + next.x - opposite.x, prev.y + next.y - opposite.y)
+            }
+            return Quad(pts[0]!!, pts[1]!!, pts[2]!!, pts[3]!!)
         }
 
         /** Default outline when detection finds nothing: the image inset by [insetFraction]. */

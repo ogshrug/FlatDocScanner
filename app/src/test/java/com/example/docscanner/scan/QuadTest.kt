@@ -73,6 +73,32 @@ class QuadTest {
     }
 
     @Test
+    fun completesAMissingCorner() {
+        val q = Quad.completing(listOf(Pt(0.0, 0.0), Pt(10.0, 1.0), null, Pt(1.0, 20.0)))!!
+        assertEquals(Pt(11.0, 21.0), q.br)
+        val full = Quad.completing(listOf(tl, tr, br, bl))!!
+        assertEquals(Quad(tl, tr, br, bl), full)
+        assertNull(Quad.completing(listOf(tl, null, null, bl)))
+    }
+
+    @Test
+    fun rejectsSliversAndAcceptsPerspectivePages() {
+        assertTrue(Quad(tl, tr, br, bl).anglesWithin())
+        // A page seen at a strong angle: still a plausible outline.
+        assertTrue(Quad(Pt(30.0, 0.0), Pt(70.0, 0.0), Pt(100.0, 100.0), Pt(0.0, 100.0)).anglesWithin())
+        // A near-degenerate sliver.
+        assertFalse(Quad(Pt(0.0, 0.0), Pt(100.0, 0.0), Pt(100.0, 5.0), Pt(90.0, 4.0)).anglesWithin())
+    }
+
+    @Test
+    fun countsSidesAlongTheBorder() {
+        assertEquals(0, Quad(tl, tr, br, bl).sidesOnBorder(400, 300))
+        assertEquals(4, Quad.inset(400, 300, 0.0).sidesOnBorder(400, 300))
+        val bottomStrip = Quad(Pt(0.0, 200.0), Pt(399.0, 210.0), Pt(399.0, 299.0), Pt(0.0, 299.0))
+        assertEquals(3, bottomStrip.sidesOnBorder(400, 300))
+    }
+
+    @Test
     fun insetQuadIsInsideImage() {
         val q = Quad.inset(1000, 800, 0.1)
         assertEquals(Pt(100.0, 80.0), q.tl)

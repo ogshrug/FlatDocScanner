@@ -7,6 +7,15 @@
         android:title="@string/action_share_pdf"
         app:showAsAction="ifRoom" />
     <item
+        android:id="@+id/action_select"
+        android:icon="@drawable/ic_select"
+        android:title="@string/action_select"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_share_images"
+        android:title="@string/action_share_images_all"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_rename"
         android:title="@string/action_rename"
         app:showAsAction="never" />

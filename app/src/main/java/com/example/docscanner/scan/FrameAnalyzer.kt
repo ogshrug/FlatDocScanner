@@ -25,25 +25,23 @@ data class LiveFrame(
 )
 
 /**
- * CameraX analyser: finds the page in each low-resolution preview frame and measures its
- * sharpness and a small content signature for [AutoCapture]. Uses only the Y (luma) plane,
- * which is already a grayscale image, so no colour conversion is needed.
+ * CameraX analyser: finds the page in each low-resolution RGBA preview frame with the learned
+ * corner model, and measures its sharpness and a small content signature for [AutoCapture].
+ * The analysis use case must output RGBA_8888.
  */
 class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.Analyzer {
-
-    /** Accept curved outlines too (book spreads); see [PageDetector.detect]. */
-    @Volatile
-    var loose = false
 
     private var rowBuffer = ByteArray(0)
     private val raw = Mat()
     private val upright = Mat()
     private val small = Mat()
+    private val gray = Mat()
 
     override fun analyze(image: ImageProxy) {
         try {
-            val gray = readUprightLuma(image)
-            val quad = PageDetector.detectInGray(gray, loose)
+            val rgba = readUprightRgba(image)
+            val quad = PageDetector.detectLive(rgba)
+            Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
             val w = gray.cols()
             val h = gray.rows()
             onFrame(
@@ -61,19 +59,20 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
         }
     }
 
-    private fun readUprightLuma(image: ImageProxy): Mat {
+    private fun readUprightRgba(image: ImageProxy): Mat {
         val plane = image.planes[0]
         val w = image.width
         val h = image.height
         val buffer = plane.buffer
         val rowStride = plane.rowStride
-        if (rowBuffer.size != w * h) rowBuffer = ByteArray(w * h)
+        val rowBytes = w * 4
+        if (rowBuffer.size != rowBytes * h) rowBuffer = ByteArray(rowBytes * h)
         // Rows can be padded to rowStride, so copy them one at a time.
         for (row in 0 until h) {
             buffer.position(row * rowStride)
-            buffer.get(rowBuffer, row * w, w)
+            buffer.get(rowBuffer, row * rowBytes, rowBytes)
         }
-        raw.create(h, w, CvType.CV_8UC1)
+        raw.create(h, w, CvType.CV_8UC4)
         raw.put(0, 0, rowBuffer)
 
         when (image.imageInfo.rotationDegrees) {
