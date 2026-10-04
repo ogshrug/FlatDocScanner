@@ -17,6 +17,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Optional: package native code for one CPU type only, e.g. -PtargetAbi=arm64-v8a
+        // for a much smaller APK to sideload onto a phone.
+        providers.gradleProperty("targetAbi").orNull?.let { abi ->
+            ndk { abiFilters += abi }
+        }
     }
 
     buildTypes {
