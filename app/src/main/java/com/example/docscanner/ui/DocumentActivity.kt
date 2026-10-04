@@ -10,7 +10,6 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -51,10 +50,11 @@ class DocumentActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableDarkEdgeToEdge()
         binding = ActivityDocumentBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.grid.padForSystemBars(bottom = true)
+        binding.addPageButton.liftAboveNavigationBar()
         onBackPressedDispatcher.addCallback(this, exitSelection)
 
         binding.toolbar.setNavigationOnClickListener { if (selecting) setSelecting(false) else finish() }

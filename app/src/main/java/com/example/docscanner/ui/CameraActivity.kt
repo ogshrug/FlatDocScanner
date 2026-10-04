@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.util.Size
 import android.view.HapticFeedbackConstants
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -101,7 +100,7 @@ class CameraActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableDarkEdgeToEdge()
         binding = ActivityCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.topBar.padForSystemBars(top = true)

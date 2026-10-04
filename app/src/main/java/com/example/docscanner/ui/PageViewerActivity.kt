@@ -8,7 +8,6 @@ import android.util.LruCache
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -45,7 +44,7 @@ class PageViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableDarkEdgeToEdge()
         binding = ActivityPageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.toolbar.padForSystemBars(top = true)

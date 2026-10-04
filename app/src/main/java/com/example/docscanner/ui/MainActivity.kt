@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -28,10 +27,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableDarkEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.list.padForSystemBars(bottom = true)
+        binding.scanButton.liftAboveNavigationBar()
 
         val adapter = DocumentAdapter { startActivity(DocumentActivity.intent(this, it.id)) }
         binding.list.layoutManager = LinearLayoutManager(this)

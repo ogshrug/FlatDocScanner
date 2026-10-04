@@ -1,11 +1,17 @@
 package com.example.docscanner.ui
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.util.LruCache
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import com.example.docscanner.util.Bitmaps
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +19,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+
+/**
+ * Edge-to-edge with light status and navigation bar icons. The app is always dark, so the
+ * bars must not follow the system's light theme (which would draw dark icons on our background).
+ */
+fun ComponentActivity.enableDarkEdgeToEdge() {
+    enableEdgeToEdge(
+        statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+    )
+}
+
+/** Keeps a floating button above the navigation bar by adding the bar's height to its margin. */
+fun View.liftAboveNavigationBar() {
+    val base = (layoutParams as? ViewGroup.MarginLayoutParams)?.bottomMargin ?: 0
+    ViewCompat.setOnApplyWindowInsetsListener(this) { v, insets ->
+        val bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+        v.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = base + bottom }
+        insets
+    }
+}
 
 /** Pads this view by the system bar insets (edge-to-edge is enforced from targetSdk 35). */
 fun View.padForSystemBars(top: Boolean = false, bottom: Boolean = false) {

@@ -31,8 +31,20 @@
         <item name="android:windowLightStatusBar">false</item>
 
         <!-- Main actions are solid accent with dark text, as in the reference. -->
-        <item name="floatingActionButtonStyle">@style/Widget.Material3.FloatingActionButton.Primary</item>
-        <item name="extendedFloatingActionButtonStyle">@style/Widget.Material3.ExtendedFloatingActionButton.Icon.Primary</item>
+        <item name="floatingActionButtonStyle">@style/Widget.DocScanner.Fab</item>
+        <item name="extendedFloatingActionButtonStyle">@style/Widget.DocScanner.ExtendedFab</item>
+    </style>
+
+    <!-- Material 3 "primary" FABs use the muted container colour; ours are solid accent. -->
+    <style name="Widget.DocScanner.Fab" parent="Widget.Material3.FloatingActionButton.Primary">
+        <item name="backgroundTint">@color/accent</item>
+        <item name="tint">@color/on_accent</item>
+    </style>
+
+    <style name="Widget.DocScanner.ExtendedFab" parent="Widget.Material3.ExtendedFloatingActionButton.Icon.Primary">
+        <item name="backgroundTint">@color/accent</item>
+        <item name="android:textColor">@color/on_accent</item>
+        <item name="iconTint">@color/on_accent</item>
     </style>
 
     <style name="Theme.DocScanner.Camera">
