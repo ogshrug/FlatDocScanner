@@ -19,7 +19,9 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Curved-page flattening** with [UVDoc](https://github.com/tanguymagne/UVDoc) (MIT), running on-device with ONNX Runtime. The model predicts a 31×45 grid of where the flat page lies in the photo; the full-resolution photo is remapped through it, and the page's real proportions are estimated from the grid. Single pages without a clean 4-corner outline are treated as curved automatically, and the crop screen has a **Flat / Curved** switch.
 - **Finger removal**: finds skin-coloured blobs touching the page edge, judged against that page's own paper colour so cream or yellowed paper isn't mistaken for skin, and inpaints them. On by default; switch per page.
 - **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
+- **Camera toolbar**: Page / Book mode, **flash** (torch), **interval timer** (a photo every 3 or 5 seconds, for turning pages at your own pace; pauses when the app is in the background) and Auto. The detected page is tinted, and an AUTO badge fills up while you hold still.
 - **Camera capture** with CameraX, plus **import from gallery**
+- **Share photos to the app**: share one or more images from the gallery or any app (or "Open with"), and each is scanned into a new document
 - **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 4.8 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
 - **Manual corner adjustment**: drag any corner, with a magnifier that shows exactly where it sits. If the corners cross, the outline turns red and saving is blocked until they're fixed.
 - **Perspective correction** squares the page from its four corners
@@ -30,10 +32,14 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
   - Black & white (adaptive threshold for a crisp "scanned" look)
 - **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
 - **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
+- **Grid or reader view**: pages as a grid, or as a continuous full-width scroll like an e-book
+- **Search**: finds words in the recognised text and marks them on the page images, in the document and in the full-screen viewer
+- **Rotate** a page a quarter turn (kept when the page is re-cropped)
 - **Full-screen viewer**: tap a page to open it; swipe for the next or previous page, pinch or double-tap to zoom. While zoomed, a swipe pans the page and only turns it once you reach the edge. Edit, share and delete from the top bar.
 - **Share as images**: the whole document, one page, or a selection. Hold a page (or use **Select pages**) to start selecting; hold and drag to reorder instead.
 - **Text recognition (OCR), opt-in**: nothing is recognised unless you ask, for one page (**Recognize text** in the viewer, with Copy, Share and Remove), a selection, or the whole document. Runs on-device with ML Kit Text Recognition v2; **Text language** switches between Latin and Devanagari (Hindi, Marathi, Nepali… plus Latin). Pages with text show "· Text" in the grid; re-cropping a page clears its text.
-- **Text exports**: share the document as **TXT** or **Markdown** (paragraphs re-flowed, words hyphenated across lines re-joined). **Share PDF** adds an invisible text layer on recognised pages, so the PDF is searchable and its text can be copied; other pages stay image-only.
+- **Text view**: the recognised text full screen, a page per swipe, with copy, share and **read aloud** (Android text-to-speech; continues onto the next page)
+- **Text exports**: share the document as **TXT** or **Markdown** (paragraphs re-flowed, words hyphenated across lines re-joined). **Word (.docx)** with a page break between pages. **PDF** adds an invisible text layer on recognised pages, so it is searchable and its text can be copied. Page images can also be shared as a **ZIP**.
 - **Library** of all scans with cover thumbnails, rename and delete
 - Everything is on-device: no account and no network access
 
@@ -112,6 +118,7 @@ app/src/main/java/com/example/docscanner/
 │   └── ScanRepository.kt     Database + page-image file management
 ├── export/PdfExporter.kt     PDF generation
 ├── export/ImageExporter.kt   Page images for sharing
+├── export/DocxExporter.kt    Word (.docx) and ZIP export, no library
 ├── ocr/PageText.kt           Recognised text model, TXT and Markdown export (pure Kotlin)
 ├── ocr/TextRecognizer.kt     ML Kit recognition, JSON storage, language setting
 ├── ui/
@@ -121,7 +128,10 @@ app/src/main/java/com/example/docscanner/
 │   ├── CropActivity.kt       Corners → filter → save
 │   ├── CornerEditView.kt     Draggable corner editor with magnifier
 │   ├── DocumentActivity.kt   Page grid, reorder, select, share
-│   ├── PageViewerActivity.kt Full-screen swipe-and-zoom viewer
+│   ├── PageViewerActivity.kt Full-screen swipe-and-zoom viewer, rotate, search marks
+│   ├── TextReaderActivity.kt Full-screen recognised text with read aloud
+│   ├── ImportActivity.kt     Scans images shared to the app
+│   ├── HighlightImageView.kt Page image with search marks and fixed proportions
 │   ├── ZoomImageView.kt      Pinch/double-tap zoom that hands swipes to the pager at the edge
 │   ├── Sharing.kt            Share-sheet intents for images, PDF and text
 │   ├── TextUi.kt             Opt-in OCR: page text sheet, recognise many, language
@@ -160,6 +170,7 @@ Requirements:
 ./gradlew :app:installDebug         # install on a connected device
 ./gradlew :app:testDebugUnitTest    # unit tests (geometry, auto-capture, spine fit, gutter gains, text export)
 ./gradlew :app:lintDebug            # Android lint
+./gradlew :app:connectedDebugAndroidTest   # on a device/emulator: detection, both models, OCR, PDF
 ```
 
 The debug APK bundles OpenCV's and ONNX Runtime's native libraries for all four CPU architectures, so it is large (~330 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture; the model itself adds 31 MB.

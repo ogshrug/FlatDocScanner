@@ -47,6 +47,26 @@
         <item name="iconTint">@color/on_accent</item>
     </style>
 
+    <style name="Widget.DocScanner.CameraOption" parent="">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:layout_marginStart">10dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:scaleType">center</item>
+        <item name="tint">@color/camera_option_tint</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Thumb" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">6dp</item>
+    </style>
+
     <style name="Theme.DocScanner.Camera">
         <item name="android:windowBackground">@color/black</item>
     </style>

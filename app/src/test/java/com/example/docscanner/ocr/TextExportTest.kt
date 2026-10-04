@@ -56,6 +56,14 @@ class TextExportTest {
     }
 
     @Test
+    fun findsLinesIgnoringCaseAndSpacing() {
+        assertEquals(listOf("This is a docu-"), page.linesMatching("THIS  is").map { it.text })
+        assertEquals(2, page.linesMatching("scan").size + page.linesMatching("chapter").size)
+        assertTrue(page.linesMatching("   ").isEmpty())
+        assertTrue(page.linesMatching("missing").isEmpty())
+    }
+
+    @Test
     fun emptyDetection() {
         assertTrue(PageText(Script.LATIN, emptyList()).isEmpty)
         assertTrue(PageText(Script.LATIN, listOf(OcrBlock(listOf(line("  "))))).isEmpty)

@@ -50,6 +50,16 @@
     <string name="book_on_description">Book mode: each photo of an open book becomes two pages. Tap for single pages.</string>
     <string name="book_off_description">Single-page mode. Tap to scan an open book two pages at a time.</string>
     <string name="book_turned_on">Book mode: fit both pages in the frame. Each photo is split into two flattened pages.</string>
+    <string name="flash_on_description">Flash is on. Tap to turn it off.</string>
+    <string name="flash_off_description">Flash is off. Tap to turn it on.</string>
+    <string name="timer_off_description">Interval timer is off. Tap to take a photo every 3 seconds.</string>
+    <string name="timer_on_description">Taking a photo every %d seconds. Tap to change.</string>
+    <string name="timer_turned_on">Taking a photo every %d seconds. Turn the page between shots.</string>
+    <string name="timer_seconds_short">%ds</string>
+    <string name="mode_title_page">Single page</string>
+    <string name="mode_title_book">Book · two pages</string>
+    <string name="badge_auto">AUTO</string>
+    <string name="done_description">Finish. %d pages scanned.</string>
     <string name="auto_on">Auto</string>
     <string name="auto_off">Manual</string>
     <string name="auto_on_description">Auto-capture is on. Tap to switch to manual.</string>
@@ -131,4 +141,36 @@
     <string name="remove_text_title">Remove recognized text?</string>
     <string name="remove_text_body">The page images stay as they are. You can recognize the text again later.</string>
     <string name="share_text_chooser">Share text</string>
+    <string name="share_file_chooser">Share</string>
+    <string name="import_label">Scan with FlatDocScanner</string>
+    <string name="import_title">Scanning shared images</string>
+    <string name="import_progress">Scanning image %1$d of %2$d…</string>
+    <string name="import_nothing">No images were shared.</string>
+    <plurals name="import_failed">
+        <item quantity="one">%d image couldn\'t be scanned.</item>
+        <item quantity="other">%d images couldn\'t be scanned.</item>
+    </plurals>
+    <string name="share_as_pdf">PDF</string>
+    <string name="share_as_images">Images</string>
+    <string name="share_as_zip">Images in a ZIP file</string>
+    <string name="share_as_text">Text (.txt)</string>
+    <string name="share_as_markdown">Markdown (.md)</string>
+    <string name="share_as_word">Word document (.docx)</string>
+    <string name="action_search">Search text</string>
+    <string name="search_hint">Search recognized text</string>
+    <string name="search_needs_text">Recognize the text first to search this document.</string>
+    <plurals name="search_results">
+        <item quantity="one">%d page matches</item>
+        <item quantity="other">%d pages match</item>
+    </plurals>
+    <string name="search_no_results">No page matches</string>
+    <string name="action_view_reader">Reader view</string>
+    <string name="action_view_grid">Grid view</string>
+    <string name="action_text_view">Text view</string>
+    <string name="action_rotate">Rotate</string>
+    <string name="action_read_aloud">Read aloud</string>
+    <string name="action_stop_reading">Stop reading</string>
+    <string name="tts_unavailable">Read aloud isn\'t available on this phone. Install a text-to-speech voice in system settings.</string>
+    <string name="text_reader_title">%1$d / %2$d</string>
+    <string name="text_not_recognized_body">The text on this page hasn\'t been recognized yet.</string>
 </resources>

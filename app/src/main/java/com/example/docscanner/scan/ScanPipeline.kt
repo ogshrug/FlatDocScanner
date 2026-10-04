@@ -47,7 +47,8 @@ object ScanPipeline {
             page.recycle()
             page = clean
         }
-        return ImageProcessor.applyFilter(page, spec.filter).also { page.recycle() }
+        val filtered = ImageProcessor.applyFilter(page, spec.filter).also { page.recycle() }
+        return ImageProcessor.rotate(filtered, spec.rotation).also { if (it !== filtered) filtered.recycle() }
     }
 
     fun render(photo: Bitmap, spec: PageSpec): Bitmap {
@@ -126,5 +127,6 @@ object ScanPipeline {
         spine = Spine.deserialize(page.spine),
         filter = runCatching { PageFilter.valueOf(page.filter) }.getOrDefault(DEFAULT_FILTER),
         removeFingers = page.removeFingers,
+        rotation = page.rotation,
     )
 }

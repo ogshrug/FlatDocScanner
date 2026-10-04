@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
@@ -25,7 +26,9 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.docscanner.R
 import com.example.docscanner.databinding.ActivityCameraBinding
 import com.example.docscanner.repository
@@ -36,6 +39,7 @@ import com.example.docscanner.scan.Quad
 import com.example.docscanner.scan.ScanPipeline
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -63,6 +67,12 @@ class CameraActivity : AppCompatActivity() {
 
     private var autoMode = true
     private var bookMode = false
+    private var camera: Camera? = null
+    private var torchOn = false
+
+    /** Interval shooting: 0 = off, otherwise a photo every this many seconds. */
+    private var timerSeconds = 0
+    private var timerJob: Job? = null
     private lateinit var analyzer: FrameAnalyzer
     private val autoCapture = AutoCapture()
     private var capturing = false
@@ -79,6 +89,8 @@ class CameraActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.camera_permission_denied, Toast.LENGTH_LONG).show()
                 binding.shutterButton.isEnabled = false
                 binding.autoButton.isEnabled = false
+                binding.timerButton.isEnabled = false
+                binding.flashButton.isEnabled = false
             }
         }
 
@@ -126,9 +138,24 @@ class CameraActivity : AppCompatActivity() {
         binding.autoButton.setOnClickListener {
             autoMode = !autoMode
             prefs.edit { putBoolean(PREF_AUTO, autoMode) }
+            if (autoMode) setTimer(0)
             updateAutoButton()
             if (autoMode) Toast.makeText(this, R.string.auto_turned_on, Toast.LENGTH_LONG).show()
         }
+        binding.timerButton.setOnClickListener {
+            // Off -> 3 s -> 5 s -> off. Interval shooting and auto-capture are alternatives.
+            setTimer(when (timerSeconds) { 0 -> 3; 3 -> 5; else -> 0 })
+            if (timerSeconds > 0) {
+                Toast.makeText(this, getString(R.string.timer_turned_on, timerSeconds), Toast.LENGTH_LONG).show()
+            }
+        }
+        binding.flashButton.setOnClickListener {
+            torchOn = !torchOn
+            camera?.cameraControl?.enableTorch(torchOn)
+            updateFlashButton()
+        }
+        updateFlashButton()
+        updateTimerButton()
 
         binding.closeButton.setOnClickListener { finishWhenSaved(openDocument = false) }
         binding.shutterButton.setOnClickListener { takePhoto(auto = false) }
@@ -184,8 +211,10 @@ class CameraActivity : AppCompatActivity() {
                     .build()
                     .also { it.setAnalyzer(analysisExecutor, analyzer) }
                 provider.unbindAll()
-                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture, analysis)
+                camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture, analysis)
                 imageCapture = capture
+                binding.flashButton.isVisible = camera?.cameraInfo?.hasFlashUnit() == true
+                if (torchOn) camera?.cameraControl?.enableTorch(true)
             } catch (e: Exception) {
                 Toast.makeText(this, R.string.camera_failed, Toast.LENGTH_LONG).show()
             }
@@ -203,8 +232,50 @@ class CameraActivity : AppCompatActivity() {
             frame.quad, frame.frameWidth, frame.frameHeight,
             ready = ready, progress = if (autoMode) decision.progress else 0f,
         )
-        binding.status.setText(statusText(decision.status))
-        if (autoMode && decision.capture) takePhoto(auto = true)
+        if (timerSeconds == 0) {
+            binding.status.setText(statusText(decision.status))
+            // The AUTO badge fills up while the page is held still.
+            val counting = autoMode && decision.status == AutoCapture.Status.HOLD_STILL && decision.progress > 0f
+            showBadge(counting, getString(R.string.badge_auto), decision.progress)
+        }
+        if (autoMode && timerSeconds == 0 && decision.capture) takePhoto(auto = true)
+    }
+
+    private fun showBadge(visible: Boolean, label: String, progress: Float) {
+        binding.autoBadge.isVisible = visible
+        if (!visible) return
+        binding.autoLabel.text = label
+        binding.autoRing.setProgressCompat((progress * 100).toInt(), false)
+    }
+
+    /** Interval shooting: counts down in the badge and takes a photo every [seconds]. */
+    private fun setTimer(seconds: Int) {
+        timerSeconds = seconds
+        timerJob?.cancel()
+        timerJob = null
+        if (seconds > 0) {
+            autoMode = false
+            updateAutoButton()
+            // Only while the camera is on screen: leaving pauses it, coming back restarts the count.
+            timerJob = lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    while (true) {
+                        for (left in seconds downTo 1) {
+                            binding.status.text = getString(R.string.timer_on_description, seconds)
+                            showBadge(true, left.toString(), (seconds - left + 1f) / seconds)
+                            delay(1000)
+                        }
+                        showBadge(false, "", 0f)
+                        takePhoto(auto = true)
+                        // Wait for the shot to finish before counting again.
+                        while (capturing) delay(100)
+                    }
+                }
+            }
+        } else {
+            showBadge(false, "", 0f)
+        }
+        updateTimerButton()
     }
 
     private fun statusText(status: AutoCapture.Status) = when (status) {
@@ -304,6 +375,7 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun finishWhenSaved(openDocument: Boolean) {
+        setTimer(0)
         binding.progress.isVisible = pendingSaves.isNotEmpty()
         binding.doneButton.isEnabled = false
         lifecycleScope.launch {
@@ -316,31 +388,49 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
+    /** The last saved page as a thumbnail with a page-count badge; tapping it finishes. */
     private fun refreshPageCount() {
         val id = documentId
         lifecycleScope.launch {
-            savedPages = if (id == null) 0 else repository.getPages(id).size
+            val pages = if (id == null) emptyList() else repository.getPages(id)
+            savedPages = pages.size
             val total = savedPages + pendingSaves.size * (if (bookMode) 2 else 1)
-            val count = resources.getQuantityString(R.plurals.page_count, total, total)
-            binding.pageCount.text = when {
-                total == 0 -> getString(R.string.camera_no_pages)
-                pendingSaves.isNotEmpty() -> getString(R.string.camera_saving, count)
-                else -> count
-            }
-            binding.doneButton.isEnabled = total > 0
+            binding.doneButton.isVisible = total > 0
+            binding.pageBadge.text = java.text.NumberFormat.getIntegerInstance().format(total)
+            binding.doneButton.contentDescription = getString(R.string.done_description, total)
+            pages.lastOrNull()?.let { Thumbnails.load(binding.lastPage, it.processedPath, 256, lifecycleScope) }
         }
     }
 
     private fun updateBookButton() {
-        binding.bookButton.setText(if (bookMode) R.string.book_on else R.string.book_off)
+        binding.bookButton.isActivated = bookMode
+        binding.bookButton.setImageResource(if (bookMode) R.drawable.ic_book else R.drawable.ic_page)
+        binding.modeTitle.setText(if (bookMode) R.string.mode_title_book else R.string.mode_title_page)
         binding.bookButton.contentDescription =
             getString(if (bookMode) R.string.book_on_description else R.string.book_off_description)
     }
 
     private fun updateAutoButton() {
-        binding.autoButton.setText(if (autoMode) R.string.auto_on else R.string.auto_off)
+        binding.autoButton.isActivated = autoMode
         binding.autoButton.contentDescription =
             getString(if (autoMode) R.string.auto_on_description else R.string.auto_off_description)
+    }
+
+    private fun updateFlashButton() {
+        binding.flashButton.isActivated = torchOn
+        binding.flashButton.setImageResource(if (torchOn) R.drawable.ic_flash_on else R.drawable.ic_flash_off)
+        binding.flashButton.contentDescription =
+            getString(if (torchOn) R.string.flash_on_description else R.string.flash_off_description)
+    }
+
+    private fun updateTimerButton() {
+        binding.timerButton.isActivated = timerSeconds > 0
+        binding.timerLabel.text = if (timerSeconds > 0) getString(R.string.timer_seconds_short, timerSeconds) else ""
+        binding.timerButton.contentDescription = if (timerSeconds > 0) {
+            getString(R.string.timer_on_description, timerSeconds)
+        } else {
+            getString(R.string.timer_off_description)
+        }
     }
 
     private fun flash() {

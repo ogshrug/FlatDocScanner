@@ -1,22 +1,13 @@
 package com.example.docscanner.ui
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Intent
-import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
-import com.example.docscanner.databinding.SheetPageTextBinding
 import com.example.docscanner.ocr.OcrSettings
-import com.example.docscanner.ocr.PageText
-import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.ocr.Script
 import com.example.docscanner.repository
-import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import kotlinx.coroutines.CancellationException
@@ -27,62 +18,6 @@ import kotlinx.coroutines.launch
  * selection, or the whole document.
  */
 object TextUi {
-
-    /** Shows the page's text, recognising it first if it hasn't been yet. */
-    fun showPageText(activity: AppCompatActivity, page: PageEntity, number: Int) {
-        val b = SheetPageTextBinding.inflate(LayoutInflater.from(activity))
-        val dialog = BottomSheetDialog(activity).apply { setContentView(b.root) }
-        b.title.text = activity.getString(R.string.text_sheet_title, number)
-        var text: PageText? = PageTextCodec.decode(page.ocr)
-
-        fun show(t: PageText) {
-            text = t
-            b.progress.isVisible = false
-            val plain = t.plain()
-            b.text.text = plain.ifBlank { activity.getString(R.string.text_sheet_empty) }
-            b.copyButton.isEnabled = plain.isNotBlank()
-            b.shareButton.isEnabled = plain.isNotBlank()
-            b.removeButton.isEnabled = true
-        }
-
-        b.copyButton.setOnClickListener {
-            val plain = text?.plain() ?: return@setOnClickListener
-            activity.getSystemService(ClipboardManager::class.java)
-                .setPrimaryClip(ClipData.newPlainText(b.title.text, plain))
-            Toast.makeText(activity, R.string.text_copied, Toast.LENGTH_SHORT).show()
-        }
-        b.shareButton.setOnClickListener {
-            val plain = text?.plain() ?: return@setOnClickListener
-            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, plain)
-            activity.startActivity(Intent.createChooser(send, activity.getString(R.string.share_text_chooser)))
-        }
-        b.removeButton.setOnClickListener {
-            activity.lifecycleScope.launch { activity.repository.removeText(page.id) }
-            dialog.dismiss()
-        }
-
-        val existing = text
-        if (existing != null) {
-            show(existing)
-        } else {
-            b.progress.isVisible = true
-            b.text.setText(R.string.recognizing)
-            b.copyButton.isEnabled = false
-            b.shareButton.isEnabled = false
-            b.removeButton.isEnabled = false
-            val job = activity.lifecycleScope.launch {
-                runCatching { activity.repository.recognizeText(page, OcrSettings.script(activity)) }
-                    .onSuccess { show(it) }
-                    .onFailure {
-                        if (it is CancellationException) throw it
-                        dialog.dismiss()
-                        Toast.makeText(activity, R.string.recognize_failed, Toast.LENGTH_LONG).show()
-                    }
-            }
-            dialog.setOnDismissListener { job.cancel() }
-        }
-        dialog.show()
-    }
 
     /**
      * Recognises the text on [pages] one at a time with a progress dialog; Cancel stops after

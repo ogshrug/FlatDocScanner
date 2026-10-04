@@ -43,6 +43,33 @@
             android:exported="false" />
 
         <activity
+            android:name=".ui.TextReaderActivity"
+            android:exported="false" />
+
+        <!-- Share photos to the app (or "Open with") to scan them into a new document. -->
+        <activity
+            android:name=".ui.ImportActivity"
+            android:exported="true"
+            android:label="@string/import_label"
+            android:theme="@style/Theme.DocScanner">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".ui.PageViewerActivity"
             android:exported="false"
             android:theme="@style/Theme.DocScanner.Camera" />

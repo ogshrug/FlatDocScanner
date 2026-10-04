@@ -220,6 +220,14 @@ object ImageProcessor {
         }
     }
 
+    /** Rotates clockwise by [degrees] (a multiple of 90). Returns [page] itself for 0. */
+    fun rotate(page: Bitmap, degrees: Int): Bitmap {
+        val d = ((degrees % 360) + 360) % 360
+        if (d == 0) return page
+        val m = android.graphics.Matrix().apply { postRotate(d.toFloat()) }
+        return Bitmap.createBitmap(page, 0, 0, page.width, page.height, m, true)
+    }
+
     private fun toBitmap(mat: Mat): Bitmap {
         val rgba = if (mat.type() == CvType.CV_8UC4) mat else Mat().also {
             Imgproc.cvtColor(mat, it, if (mat.channels() == 1) Imgproc.COLOR_GRAY2RGBA else Imgproc.COLOR_RGB2RGBA)

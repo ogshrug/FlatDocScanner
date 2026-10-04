@@ -92,6 +92,24 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
 
     suspend fun removeText(pageId: Long) = dao.setOcr(pageId, null)
 
+    /**
+     * Turns a page a quarter clockwise. The finished image is rotated directly (no re-processing)
+     * and the rotation is stored, so re-cropping later keeps it. Recognised text is cleared
+     * because its positions no longer match.
+     */
+    suspend fun rotatePage(page: PageEntity) = withContext(Dispatchers.IO) {
+        val src = File(page.processedPath)
+        val bmp = android.graphics.BitmapFactory.decodeFile(src.path) ?: error("could not read page")
+        val turned = com.example.docscanner.scan.ImageProcessor.rotate(bmp, 90)
+        val newFile = File(src.parentFile, "page_${UUID.randomUUID()}.jpg")
+        Bitmaps.writeJpeg(turned, newFile)
+        bmp.recycle()
+        turned.recycle()
+        dao.updatePage(page.copy(processedPath = newFile.path, rotation = (page.rotation + 90) % 360, ocr = null))
+        src.delete()
+        dao.touchDocument(page.documentId, System.currentTimeMillis())
+    }
+
     suspend fun removeAllText(documentId: Long) = dao.clearOcr(documentId)
 
     suspend fun reorder(documentId: Long, pageIdsInOrder: List<Long>) {
@@ -128,6 +146,7 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         side = spec.side.name,
         spine = spec.spine?.serialize(),
         removeFingers = spec.removeFingers,
+        rotation = spec.rotation,
     )
 
     private companion object {

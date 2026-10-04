@@ -66,9 +66,9 @@ class PageOverlayView @JvmOverloads constructor(
         }
         path.close()
 
-        val color = if (ready) readyColor else Color.WHITE
-        fill.color = Color.argb((40 + 80 * progress).toInt(), Color.red(color), Color.green(color), Color.blue(color))
-        stroke.color = color
+        // The page is tinted as soon as it is found; the tint deepens as auto-capture counts down.
+        fill.color = Color.argb((45 + 90 * progress).toInt(), Color.red(readyColor), Color.green(readyColor), Color.blue(readyColor))
+        stroke.color = if (ready) readyColor else Color.WHITE
         canvas.drawPath(path, fill)
         canvas.drawPath(path, stroke)
     }

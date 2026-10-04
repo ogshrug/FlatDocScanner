@@ -7,7 +7,9 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
+import com.example.docscanner.export.DocxExporter
 import com.example.docscanner.export.ImageExporter
+import com.example.docscanner.export.ZipExporter
 import com.example.docscanner.export.PdfExporter
 import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.ocr.TextExport
@@ -51,6 +53,30 @@ object Sharing {
             .putExtra(Intent.EXTRA_TITLE, file.name)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         return Intent.createChooser(send, context.getString(R.string.share_text_chooser))
+    }
+
+    /** The recognised text as a Word document. */
+    fun word(context: Context, pages: List<PageEntity>, title: String): Intent {
+        val file = File(freshDir(context), "${safe(title)}.docx")
+        file.outputStream().use { DocxExporter.write(title, pages.map { PageTextCodec.decode(it.ocr) }, it) }
+        return fileIntent(context, file, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    }
+
+    /** All page images in one .zip. [numbers] are the pages' numbers in the document. */
+    fun zip(context: Context, pages: List<PageEntity>, numbers: List<Int>, title: String): Intent {
+        val file = File(freshDir(context), "${safe(title)}.zip")
+        val entries = pages.mapIndexed { i, p -> "${safe(title)} - page ${numbers[i]}.jpg" to File(p.processedPath) }
+        file.outputStream().use { ZipExporter.write(entries, it) }
+        return fileIntent(context, file, "application/zip")
+    }
+
+    private fun fileIntent(context: Context, file: File, type: String): Intent {
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(type)
+            .putExtra(Intent.EXTRA_STREAM, uriFor(context, file))
+            .putExtra(Intent.EXTRA_TITLE, file.name)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return Intent.createChooser(send, context.getString(R.string.share_file_chooser))
     }
 
     private fun safe(title: String) = title.replace(Regex("[^A-Za-z0-9 ._-]"), "_").ifBlank { "scan" }

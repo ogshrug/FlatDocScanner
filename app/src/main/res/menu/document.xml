@@ -2,30 +2,53 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/action_share_pdf"
-        android:icon="@drawable/ic_share"
-        android:title="@string/action_share_pdf"
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_search"
+        android:title="@string/action_search"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"
+        app:showAsAction="ifRoom|collapseActionView" />
+    <item
+        android:id="@+id/action_view_mode"
+        android:icon="@drawable/ic_view_stream"
+        android:title="@string/action_view_reader"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_share"
+        android:icon="@drawable/ic_share"
+        android:title="@string/action_share"
+        app:showAsAction="ifRoom">
+        <menu>
+            <item
+                android:id="@+id/action_share_pdf"
+                android:title="@string/share_as_pdf" />
+            <item
+                android:id="@+id/action_share_images"
+                android:title="@string/share_as_images" />
+            <item
+                android:id="@+id/action_share_zip"
+                android:title="@string/share_as_zip" />
+            <item
+                android:id="@+id/action_share_text"
+                android:title="@string/share_as_text" />
+            <item
+                android:id="@+id/action_share_markdown"
+                android:title="@string/share_as_markdown" />
+            <item
+                android:id="@+id/action_share_word"
+                android:title="@string/share_as_word" />
+        </menu>
+    </item>
+    <item
+        android:id="@+id/action_text_view"
+        android:title="@string/action_text_view"
+        app:showAsAction="never" />
     <item
         android:id="@+id/action_select"
-        android:icon="@drawable/ic_select"
         android:title="@string/action_select"
-        app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_share_images"
-        android:title="@string/action_share_images_all"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_recognize_all"
         android:title="@string/action_recognize_all"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_share_text"
-        android:title="@string/action_share_text"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/action_share_markdown"
-        android:title="@string/action_share_markdown"
         app:showAsAction="never" />
     <item
         android:id="@+id/action_remove_text_all"

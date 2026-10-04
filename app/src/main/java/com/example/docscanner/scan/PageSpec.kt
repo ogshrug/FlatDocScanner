@@ -78,6 +78,8 @@ data class PageSpec(
     val spine: Spine? = null,
     val filter: PageFilter = ScanPipeline.DEFAULT_FILTER,
     val removeFingers: Boolean = true,
+    /** Clockwise rotation of the finished page: 0, 90, 180 or 270. */
+    val rotation: Int = 0,
 )
 
 object Gutter {

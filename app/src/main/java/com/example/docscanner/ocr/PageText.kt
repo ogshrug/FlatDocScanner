@@ -20,10 +20,21 @@ data class PageText(val script: Script, val blocks: List<OcrBlock>) {
         .filter { it.isNotEmpty() }
         .joinToString("\n\n")
 
+    /** Lines containing [query], ignoring case and runs of whitespace; empty for a blank query. */
+    fun linesMatching(query: String): List<OcrLine> {
+        val q = normalize(query)
+        if (q.isEmpty()) return emptyList()
+        return blocks.flatMap { it.lines }.filter { normalize(it.text).contains(q) }
+    }
+
     /** Each block as one flowing paragraph, joining words hyphenated across lines. */
     fun paragraphs(): List<String> = blocks.map { joinLines(it.lines.map { l -> l.text.trim() }) }.filter { it.isNotEmpty() }
 
     companion object {
+        private val SPACES = Regex("\\s+")
+
+        fun normalize(s: String) = s.trim().replace(SPACES, " ").lowercase()
+
         /**
          * Joins lines into a paragraph. A line ending in a hyphen followed by a line starting in
          * lower case is one word split across lines ("docu-" + "ment" → "document").

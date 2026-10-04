@@ -16,6 +16,37 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Auto-capture countdown, and the interval timer's seconds. -->
+    <FrameLayout
+        android:id="@+id/autoBadge"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_badge"
+        android:importantForAccessibility="no"
+        android:visibility="gone">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/autoRing"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:max="100"
+            app:indicatorColor="@color/accent"
+            app:indicatorInset="6dp"
+            app:indicatorSize="84dp"
+            app:trackColor="#33FFFFFF"
+            app:trackThickness="4dp" />
+
+        <TextView
+            android:id="@+id/autoLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="@color/accent"
+            android:textStyle="bold" />
+    </FrameLayout>
+
     <View
         android:id="@+id/flash"
         android:layout_width="match_parent"
@@ -31,11 +62,9 @@
         android:orientation="vertical"
         android:padding="8dp">
 
-        <LinearLayout
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_height="48dp">
 
             <ImageButton
                 android:id="@+id/closeButton"
@@ -47,29 +76,13 @@
                 app:tint="@android:color/white" />
 
             <TextView
-                android:id="@+id/pageCount"
-                android:layout_width="0dp"
+                android:id="@+id/modeTitle"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
+                android:layout_gravity="center"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="@android:color/white" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/bookButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:minWidth="80dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/autoButton"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="80dp" />
-        </LinearLayout>
+        </FrameLayout>
 
         <TextView
             android:id="@+id/status"
@@ -90,49 +103,136 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="24dp"
-        android:paddingVertical="24dp">
+        android:background="@color/scrim"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
 
-        <FrameLayout
-            android:layout_width="0dp"
+        <!-- Capture options: page/book, flash, interval timer, auto. -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1">
+            android:gravity="center"
+            android:orientation="horizontal">
 
             <ImageButton
-                android:id="@+id/galleryButton"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:layout_gravity="center"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_import"
-                android:src="@drawable/ic_photo"
-                app:tint="@android:color/white" />
-        </FrameLayout>
+                android:id="@+id/bookButton"
+                style="@style/Widget.DocScanner.CameraOption"
+                android:contentDescription="@string/book_off_description"
+                android:src="@drawable/ic_page" />
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/shutterButton"
-            android:layout_width="wrap_content"
+            <ImageButton
+                android:id="@+id/flashButton"
+                style="@style/Widget.DocScanner.CameraOption"
+                android:contentDescription="@string/flash_off_description"
+                android:src="@drawable/ic_flash_off" />
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <ImageButton
+                    android:id="@+id/timerButton"
+                    style="@style/Widget.DocScanner.CameraOption"
+                    android:contentDescription="@string/timer_off_description"
+                    android:src="@drawable/ic_timer" />
+
+                <TextView
+                    android:id="@+id/timerLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="14dp"
+                    android:layout_marginBottom="6dp"
+                    android:importantForAccessibility="no"
+                    android:textColor="@color/accent"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </FrameLayout>
+
+            <ImageButton
+                android:id="@+id/autoButton"
+                style="@style/Widget.DocScanner.CameraOption"
+                android:contentDescription="@string/auto_on_description"
+                android:src="@drawable/ic_auto" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:contentDescription="@string/action_capture"
-            android:src="@drawable/ic_camera"
-            app:fabCustomSize="76dp"
-            app:maxImageSize="32dp" />
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="24dp">
 
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/doneButton"
+                <ImageButton
+                    android:id="@+id/galleryButton"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="center"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/action_import"
+                    android:src="@drawable/ic_photo"
+                    app:tint="@android:color/white" />
+            </FrameLayout>
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/shutterButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:enabled="false"
-                android:text="@string/action_done" />
-        </FrameLayout>
+                android:contentDescription="@string/action_capture"
+                android:src="@drawable/ic_camera"
+                app:fabCustomSize="76dp"
+                app:maxImageSize="32dp"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.DocScanner.Circle" />
+
+            <!-- Last captured page; tap to finish and open the document. -->
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+                <FrameLayout
+                    android:id="@+id/doneButton"
+                    android:layout_width="56dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="center"
+                    android:background="?attr/selectableItemBackground"
+                    android:visibility="invisible">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/lastPage"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@color/surface_high"
+                        android:importantForAccessibility="no"
+                        android:scaleType="centerCrop"
+                        app:shapeAppearanceOverlay="@style/ShapeAppearance.DocScanner.Thumb"
+                        app:strokeColor="@android:color/white"
+                        app:strokeWidth="2dp" />
+
+                    <TextView
+                        android:id="@+id/pageBadge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="22dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/bg_count_badge"
+                        android:gravity="center"
+                        android:minWidth="22dp"
+                        android:paddingHorizontal="6dp"
+                        android:textColor="@color/on_accent"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </FrameLayout>
+            </FrameLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <ProgressBar

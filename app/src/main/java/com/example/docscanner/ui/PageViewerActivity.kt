@@ -3,6 +3,7 @@ package com.example.docscanner.ui
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.os.Bundle
 import android.util.LruCache
 import android.view.LayoutInflater
@@ -19,6 +20,7 @@ import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
 import com.example.docscanner.databinding.ActivityPageViewerBinding
 import com.example.docscanner.databinding.ItemPageViewerBinding
+import com.example.docscanner.ocr.PageTextCodec
 import com.example.docscanner.repository
 import com.example.docscanner.util.Bitmaps
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -35,6 +37,7 @@ class PageViewerActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityPageViewerBinding
     private val documentId by lazy { intent.getLongExtra(EXTRA_DOCUMENT_ID, -1L) }
+    private val query by lazy { intent.getStringExtra(EXTRA_QUERY).orEmpty() }
     private var title = ""
     private val adapter = ViewerAdapter()
     private var positioned = false
@@ -53,7 +56,11 @@ class PageViewerActivity : AppCompatActivity() {
         binding.toolbar.setOnMenuItemClickListener {
             val page = currentPage() ?: return@setOnMenuItemClickListener true
             when (it.itemId) {
-                R.id.action_text -> TextUi.showPageText(this, page, binding.pager.currentItem + 1)
+                R.id.action_text -> startActivity(TextReaderActivity.intent(this, documentId, page.id))
+                R.id.action_rotate -> lifecycleScope.launch {
+                    runCatching { repository.rotatePage(page) }
+                        .onFailure { Toast.makeText(this@PageViewerActivity, R.string.save_failed, Toast.LENGTH_LONG).show() }
+                }
                 R.id.action_edit -> startActivity(CropActivity.editPageIntent(this, page.id))
                 R.id.action_share_image -> share(page)
                 R.id.action_delete_page -> confirmDelete(page)
@@ -180,6 +187,10 @@ class PageViewerActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val path = pages[position].processedPath
             holder.b.image.contentDescription = getString(R.string.viewer_page_description, position + 1)
+            // Search matches carried over from the document screen.
+            holder.b.image.highlights = if (query.isEmpty()) emptyList() else
+                PageTextCodec.decode(pages[position].ocr)?.linesMatching(query).orEmpty()
+                    .map { RectF(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) }
             holder.b.image.tag = path
             val cached = cache.get(path)
             holder.b.image.setBitmap(cached)
@@ -203,9 +214,12 @@ class PageViewerActivity : AppCompatActivity() {
         /** Sharp enough to read small print when zoomed, small enough to keep a few in memory. */
         private const val VIEWER_MAX_DIM = 2400
 
-        fun intent(context: Context, documentId: Long, pageId: Long) =
+        private const val EXTRA_QUERY = "query"
+
+        fun intent(context: Context, documentId: Long, pageId: Long, query: String = "") =
             Intent(context, PageViewerActivity::class.java)
                 .putExtra(EXTRA_DOCUMENT_ID, documentId)
                 .putExtra(EXTRA_PAGE_ID, pageId)
+                .putExtra(EXTRA_QUERY, query)
     }
 }

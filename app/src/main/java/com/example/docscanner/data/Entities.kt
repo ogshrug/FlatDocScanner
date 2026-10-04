@@ -46,6 +46,8 @@ data class PageEntity(
     @ColumnInfo(name = "remove_fingers", defaultValue = "0") val removeFingers: Boolean = false,
     /** Recognised text, only if the user asked for it; see [com.example.docscanner.ocr.PageTextCodec]. */
     val ocr: String? = null,
+    /** Clockwise rotation of the finished page, see [com.example.docscanner.scan.PageSpec.rotation]. */
+    @ColumnInfo(defaultValue = "0") val rotation: Int = 0,
 )
 
 data class DocumentSummary(

@@ -7,12 +7,16 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.animation.DecelerateInterpolator
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
+import com.example.docscanner.R
 import kotlin.math.abs
 
 /**
@@ -28,6 +32,17 @@ class ZoomImageView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     var onSingleTap: (() -> Unit)? = null
+
+    /** Search matches to mark, as rectangles in 0..1 fractions of the page. */
+    var highlights: List<RectF> = emptyList()
+        set(value) {
+            field = value
+            invalidate()
+        }
+    private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.accent), 110)
+    }
+    private val mark = RectF()
 
     private var bitmap: Bitmap? = null
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -90,6 +105,12 @@ class ZoomImageView @JvmOverloads constructor(
         drawMatrix.setScale(fitScale * zoom, fitScale * zoom)
         drawMatrix.postTranslate(tx, ty)
         canvas.drawBitmap(b, drawMatrix, paint)
+        val w = contentWidth()
+        val h = contentHeight()
+        for (r in highlights) {
+            mark.set(tx + r.left * w, ty + r.top * h, tx + r.right * w, ty + r.bottom * h)
+            canvas.drawRoundRect(mark, 6f, 6f, highlightPaint)
+        }
     }
 
     /** Whether the page can still pan in the direction of a horizontal drag of [dx] pixels. */
