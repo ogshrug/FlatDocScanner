@@ -18,3 +18,4 @@ build/
 /.idea/
 # Planning notes, kept local
 /plan.md
+/replica/
