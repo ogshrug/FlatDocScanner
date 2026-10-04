@@ -1,0 +1,29 @@
+feature,area,priority,original,clone,notes
+Live page edge detection with overlay,capture,must,yes,no,plan 3.1 / phase 2
+Perspective crop and straighten (4-point),processing,must,yes,yes,plan phase 1
+Manual corner adjustment after capture,processing,must,yes,yes,not in plan.md before this review; standard fallback when detection misses
+Auto-capture when page is still and in focus,capture,must,yes,no,plan 3.1
+Auto-capture on page turn (continuous book scanning),capture,must,yes,no,vFlat's core book loop; needs change-then-settle state machine (plan 3.1 updated)
+Curved page flattening from one photo,processing,must,yes,no,plan 3.2; the hard part
+Two-page spread split,processing,must,yes,no,plan 3.3
+Color / B&W enhancement filters,processing,must,yes,yes,plan 3.4
+Multi-page document (batch) with reorder and delete,library,must,yes,yes,plan phase 5 had batch; moved earlier
+Scan library / history,library,must,yes,yes,Room per plan section 4
+PDF export,export,must,yes,yes,plan 3.6
+JPG export,export,must,yes,no,plan 3.6
+Share to other apps,export,must,yes,yes,Android share sheet
+OCR to copyable text,ocr,must,yes,no,plan 3.5 tier 1
+Finger removal,processing,should,yes,no,headline vFlat feature; missing from plan.md before this review
+Searchable PDF (text layer),export,should,yes,no,plan phase 4
+TXT export,export,should,yes,no,plan 3.6
+OCR in many languages (100+),ocr,should,yes,no,ML Kit v2 covers only Latin/Chinese/Devanagari/Japanese/Korean scripts; cloud tier needed for more
+Import from gallery,capture,should,yes,yes,not in plan.md before this review
+Structured Markdown (tables/formulas) export,export,could,unknown,no,plan's WeVisDoc tier; not a vFlat feature that I could confirm - a possible differentiator
+Word (.docx) export,export,could,yes,no,
+ZIP export,export,could,yes,no,
+Handwriting / scribble removal,processing,could,yes,no,vFlat premium feature
+Text-to-speech of OCR text,ocr,could,yes,no,Android TextToSpeech
+Send to PC / shareable web link,export,could,yes,no,needs hosting
+Cloud backup,library,could,yes,no,
+Subscription with free-tier limits,monetisation,could,yes,no,vFlat site lists monthly free caps; decide your own model
+vFlat's server OCR infrastructure and trained models,ocr,could,yes,skip,their proprietary models; use open models (UVDoc / ML Kit / WeVisDoc) instead

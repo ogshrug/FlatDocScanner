@@ -1,0 +1,57 @@
+<resources>
+    <string name="app_name">FlatDocScanner</string>
+
+    <string name="empty_title">No scans yet</string>
+    <string name="empty_body">Tap Scan to photograph a document. You can add more pages, fix the corners and export a PDF.</string>
+
+    <string name="action_scan">Scan</string>
+    <string name="action_close">Close camera</string>
+    <string name="action_import">Import from gallery</string>
+    <string name="action_capture">Take photo</string>
+    <string name="action_done">Done</string>
+    <string name="action_back">Back</string>
+    <string name="action_next">Next</string>
+    <string name="action_save">Save page</string>
+    <string name="action_full_image">Use full image</string>
+    <string name="action_add_page">Add page</string>
+    <string name="action_share_pdf">Share PDF</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_delete_document">Delete document</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+
+    <string name="title_crop">Crop page</string>
+    <string name="title_filter">Choose a look</string>
+    <string name="hint_detected">Page found. Drag a corner to adjust it.</string>
+    <string name="hint_not_detected">Couldn\'t find the page edges. Drag the corners to the page.</string>
+    <string name="hint_invalid">The corners cross each other. Drag them back into a page shape.</string>
+    <string name="result_description">Cropped page preview</string>
+
+    <string name="filter_original">Original</string>
+    <string name="filter_color">Color</string>
+    <string name="filter_gray">Grayscale</string>
+    <string name="filter_bw">Black &amp; white</string>
+
+    <plurals name="page_count">
+        <item quantity="one">%d page</item>
+        <item quantity="other">%d pages</item>
+    </plurals>
+    <string name="document_subtitle">%1$s · %2$s</string>
+    <string name="page_number">Page %d</string>
+    <string name="camera_no_pages">Point at a page and tap the shutter</string>
+
+    <string name="camera_permission_denied">FlatDocScanner needs the camera to scan. You can still import photos from your gallery.</string>
+    <string name="camera_failed">The camera couldn\'t start. Close other camera apps and try again.</string>
+    <string name="capture_failed">The photo couldn\'t be taken. Try again.</string>
+    <string name="image_load_failed">That image couldn\'t be opened.</string>
+    <string name="save_failed">The page couldn\'t be saved. Check your free storage and try again.</string>
+    <string name="export_failed">The PDF couldn\'t be created. Try again.</string>
+
+    <string name="rename_title">Rename document</string>
+    <string name="delete_document_title">Delete this document?</string>
+    <string name="delete_document_body">All of its pages will be removed from this phone. This can\'t be undone.</string>
+    <string name="delete_page_title">Delete page %d?</string>
+    <string name="delete_page_body">The page will be removed from this document. This can\'t be undone.</string>
+    <string name="delete_page_last_body">This is the only page, so the whole document will be deleted.</string>
+    <string name="share_pdf_chooser">Share PDF</string>
+</resources>
