@@ -1,20 +1,16 @@
 package com.example.docscanner.ui
 
-import android.content.ClipData
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -26,19 +22,17 @@ import com.example.docscanner.R
 import com.example.docscanner.data.PageEntity
 import com.example.docscanner.databinding.ActivityDocumentBinding
 import com.example.docscanner.databinding.ItemPageBinding
-import com.example.docscanner.export.ImageExporter
-import com.example.docscanner.export.PdfExporter
 import com.example.docscanner.repository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.Collections
 
 /**
  * Pages of one document (S03): reorder, edit, delete, add more, share as PDF or images.
- * "Select pages" switches to a selection mode for sharing or deleting some pages only.
+ * Tapping a page opens it full screen; "Select pages" switches to a selection mode for
+ * sharing or deleting some pages only.
  */
 class DocumentActivity : AppCompatActivity() {
 
@@ -160,37 +154,6 @@ class DocumentActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- single page actions ---------------------------------------------------------
-
-    private fun showPageMenu(anchor: android.view.View, page: PageEntity, number: Int) {
-        PopupMenu(this, anchor).apply {
-            menu.add(0, 1, 0, R.string.title_crop)
-            menu.add(0, 3, 1, R.string.action_share_image)
-            menu.add(0, 2, 2, R.string.action_delete)
-            setOnMenuItemClickListener {
-                when (it.itemId) {
-                    1 -> startActivity(CropActivity.editPageIntent(this@DocumentActivity, page.id))
-                    3 -> shareImages(listOf(page))
-                    else -> confirmDeletePage(page, number)
-                }
-                true
-            }
-            show()
-        }
-    }
-
-    private fun confirmDeletePage(page: PageEntity, number: Int) {
-        val last = adapter.itemCount == 1
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.delete_page_title, number))
-            .setMessage(if (last) R.string.delete_page_last_body else R.string.delete_page_body)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_delete) { _, _ ->
-                lifecycleScope.launch { repository.deletePage(page) }
-            }
-            .show()
-    }
-
     // --- document actions --------------------------------------------------------------
 
     private fun confirmDeleteDocument() {
@@ -232,38 +195,15 @@ class DocumentActivity : AppCompatActivity() {
 
     // --- sharing -----------------------------------------------------------------------
 
-    private fun safeTitle() = title.replace(Regex("[^A-Za-z0-9 ._-]"), "_").ifBlank { "scan" }
-
     private fun sharePdf(pages: List<PageEntity>) {
         if (pages.isEmpty()) return
-        export(R.string.export_failed) {
-            val dir = File(cacheDir, "exports").apply { deleteRecursively(); mkdirs() }
-            val file = File(dir, "${safeTitle()}.pdf").also { PdfExporter.export(pages, it) }
-            Intent(Intent.ACTION_SEND)
-                .setType("application/pdf")
-                .putExtra(Intent.EXTRA_STREAM, uriFor(file))
-                .putExtra(Intent.EXTRA_TITLE, file.name)
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                .let { Intent.createChooser(it, getString(R.string.share_pdf_chooser)) }
-        }
+        export(R.string.export_failed) { Sharing.pdf(this, pages, title) }
     }
 
     private fun shareImages(pages: List<PageEntity>) {
         if (pages.isEmpty()) return
-        export(R.string.export_images_failed) {
-            val dir = File(cacheDir, "exports").apply { deleteRecursively(); mkdirs() }
-            val numbers = pages.map { p -> adapter.pages.indexOfFirst { it.id == p.id } + 1 }
-            val uris = ImageExporter.copyForSharing(pages, numbers, dir, safeTitle()).map(::uriFor)
-            val send = if (uris.size == 1) {
-                Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
-            } else {
-                Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
-            }
-            send.setType("image/jpeg").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            // ClipData carries the read permission for every image, not just the first.
-            send.clipData = ClipData.newRawUri(null, uris[0]).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
-            Intent.createChooser(send, getString(R.string.share_images_chooser))
-        }
+        val numbers = pages.map { p -> adapter.pages.indexOfFirst { it.id == p.id } + 1 }
+        export(R.string.export_images_failed) { Sharing.images(this, pages, numbers, title) }
     }
 
     /** Runs [build] off the main thread with a spinner, then launches the share sheet it returns. */
@@ -280,8 +220,6 @@ class DocumentActivity : AppCompatActivity() {
             startActivity(chooser)
         }
     }
-
-    private fun uriFor(file: File): Uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
 
     // --- grid ----------------------------------------------------------------------------
 
@@ -317,7 +255,8 @@ class DocumentActivity : AppCompatActivity() {
             holder.b.root.setOnClickListener {
                 val pos = holder.bindingAdapterPosition
                 if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
-                if (selecting) toggle(pages[pos], pos) else showPageMenu(it, pages[pos], pos + 1)
+                if (selecting) toggle(pages[pos], pos)
+                else startActivity(PageViewerActivity.intent(this@DocumentActivity, documentId, pages[pos].id))
             }
         }
     }

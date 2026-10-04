@@ -30,6 +30,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
   - Black & white (adaptive threshold for a crisp "scanned" look)
 - **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
 - **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
+- **Full-screen viewer**: tap a page to open it; swipe for the next or previous page, pinch or double-tap to zoom. While zoomed, a swipe pans the page and only turns it once you reach the edge. Edit, share and delete from the top bar.
 - **Share as images**: the whole document, one page, or a selection. **Select pages** lets you tick pages to share as images or a PDF, or to delete.
 - **Library** of all scans with cover thumbnails, rename and delete
 - Everything is on-device: no account and no network access
@@ -115,7 +116,10 @@ app/src/main/java/com/example/docscanner/
 │   ├── PageOverlayView.kt    Live page outline over the preview
 │   ├── CropActivity.kt       Corners → filter → save
 │   ├── CornerEditView.kt     Draggable corner editor with magnifier
-│   ├── DocumentActivity.kt   Page grid, reorder, share PDF
+│   ├── DocumentActivity.kt   Page grid, reorder, select, share
+│   ├── PageViewerActivity.kt Full-screen swipe-and-zoom viewer
+│   ├── ZoomImageView.kt      Pinch/double-tap zoom that hands swipes to the pager at the edge
+│   ├── Sharing.kt            Share-sheet intents for images and PDF
 │   └── UiUtils.kt            Insets and thumbnail cache
 └── util/Bitmaps.kt           EXIF-aware sampled decoding, JPEG writing
 
