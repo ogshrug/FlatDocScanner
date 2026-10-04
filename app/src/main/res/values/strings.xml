@@ -26,6 +26,10 @@
     <string name="hint_not_detected">Couldn\'t find the page edges. Drag the corners to the page.</string>
     <string name="hint_invalid">The corners cross each other. Drag them back into a page shape.</string>
     <string name="result_description">Cropped page preview</string>
+    <string name="mode_flat">Flat page</string>
+    <string name="mode_curved">Curved page</string>
+    <string name="hint_curved">Drag the corners around the page. The curve is flattened automatically.</string>
+    <string name="remove_fingers">Remove fingers</string>
 
     <string name="filter_original">Original</string>
     <string name="filter_color">Color</string>
@@ -41,6 +45,11 @@
     <string name="camera_no_pages">Point at a page and tap the shutter</string>
     <string name="camera_saving">%1$s · saving…</string>
 
+    <string name="book_on">Book</string>
+    <string name="book_off">Page</string>
+    <string name="book_on_description">Book mode: each photo of an open book becomes two pages. Tap for single pages.</string>
+    <string name="book_off_description">Single-page mode. Tap to scan an open book two pages at a time.</string>
+    <string name="book_turned_on">Book mode: fit both pages in the frame. Each photo is split into two flattened pages.</string>
     <string name="auto_on">Auto</string>
     <string name="auto_off">Manual</string>
     <string name="auto_on_description">Auto-capture is on. Tap to switch to manual.</string>

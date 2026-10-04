@@ -2,7 +2,7 @@
 
 An Android document and book scanner. Point your phone at a page and FlatDocScanner outlines it live, takes the photo by itself once you hold still, squares it up, cleans it and adds it to a multi-page document you can share as a PDF. Turn the page, and it captures the next one.
 
-The long-term goal is complete hands-free **book** scanning, including flattening of curved pages, splitting of two-page spreads, and OCR (see [Roadmap](#roadmap)).
+**Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network. It also evens out the gutter shadow and removes fingers holding the pages down. Everything runs on the phone: no account, no upload.
 
 ## Features
 
@@ -12,6 +12,12 @@ The long-term goal is complete hands-free **book** scanning, including flattenin
   - **page-turn detection**: after a capture it waits for the page to leave the view or the outline to jump, and refuses to capture content that matches the previous page, so you can scan a book just by turning pages
   - auto-captured pages are cropped, filtered and saved in the background while you keep scanning; tap any page later to fine-tune it
   - a status pill tells you what it needs: *Looking for a page*, *Move closer*, *Hold steady while it focuses*, *Hold still*, *Turn the page*
+- **Book mode** (toggle **Page / Book**): every photo of an open book becomes two pages
+  - **spine detection**: finds the gutter shadow row by row and fits a straight line through it, robust to pictures and text; falls back to the middle of the spread
+  - each half is flattened separately, because the model is trained on single pages
+  - **gutter shadow correction** lifts the dark band next to the spine to the paper level of the rest of the page and trims the fold line
+- **Curved-page flattening** with [UVDoc](https://github.com/tanguymagne/UVDoc) (MIT), running on-device with ONNX Runtime. The model predicts a 31×45 grid of where the flat page lies in the photo; the full-resolution photo is remapped through it, and the page's real proportions are estimated from the grid. Single pages without a clean 4-corner outline are treated as curved automatically, and the crop screen has a **Flat / Curved** switch.
+- **Finger removal**: finds skin-coloured blobs touching the page edge, judged against that page's own paper colour so cream or yellowed paper isn't mistaken for skin, and inpaints them. On by default; switch per page.
 - **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
 - **Camera capture** with CameraX, plus **import from gallery**
 - **Automatic page detection** with OpenCV: edge and contour analysis finds the page's four corners, and a threshold-based pass catches low-contrast edges
@@ -44,7 +50,15 @@ AutoCapture ── state machine: TOO_SMALL / BLURRY / HOLD_STILL → CAPTURE �
 ImageCapture (full resolution) → ScanPipeline → saved page
 ```
 
-Per photo (auto-captured, or after a manual shot in the crop screen):
+Book spread (Book mode):
+
+```
+Photo → PageDetector (loose: curved outlines allowed) → SpineDetector
+      → for each side: ImageProcessor.halfPage (other page painted out)
+      → Dewarper (UVDoc, ONNX Runtime) → correctGutter → FingerRemover → filter
+```
+
+Flat page, per photo (auto-captured, or after a manual shot in the crop screen):
 
 ```
 Camera / gallery
@@ -81,7 +95,11 @@ app/src/main/java/com/example/docscanner/
 │   ├── ImageProcessor.kt     Perspective warp and filters
 │   ├── FrameAnalyzer.kt      Live CameraX analyser: outline, sharpness, signature
 │   ├── AutoCapture.kt        Auto-capture and page-turn state machine (pure Kotlin)
-│   └── ScanPipeline.kt       Photo → saved page without user input
+│   ├── ScanPipeline.kt       Photo → finished page (geometry, then finishing), auto-save
+│   ├── PageSpec.kt           Page settings, spine line fit, gutter gains (pure Kotlin)
+│   ├── Dewarper.kt           UVDoc curved-page flattening via ONNX Runtime
+│   ├── SpineDetector.kt      Book gutter detection
+│   └── FingerRemover.kt      Finger detection and inpainting
 ├── data/
 │   ├── Entities.kt           DocumentEntity, PageEntity
 │   ├── ScanDao.kt            Room queries
@@ -97,6 +115,9 @@ app/src/main/java/com/example/docscanner/
 │   ├── DocumentActivity.kt   Page grid, reorder, share PDF
 │   └── UiUtils.kt            Insets and thumbnail cache
 └── util/Bitmaps.kt           EXIF-aware sampled decoding, JPEG writing
+
+app/src/main/assets/uvdoc.onnx   UVDoc model (31 MB), exported by tools/export_uvdoc_onnx.py
+tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTorch
 ```
 
 ## Tech stack
@@ -106,6 +127,7 @@ app/src/main/java/com/example/docscanner/
 | Language / UI | Kotlin, Android Views, Material 3 |
 | Camera | CameraX 1.6 |
 | Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
+| Curved pages | UVDoc via ONNX Runtime 1.30 |
 | Storage | Room 2.8 (KSP) |
 | PDF | `android.graphics.pdf.PdfDocument` |
 | Build | AGP 9.4, Gradle 9.6, version catalog |
@@ -121,25 +143,35 @@ Requirements:
 ```bash
 ./gradlew :app:assembleDebug        # build the debug APK
 ./gradlew :app:installDebug         # install on a connected device
-./gradlew :app:testDebugUnitTest    # unit tests (corner geometry, auto-capture state machine)
+./gradlew :app:testDebugUnitTest    # unit tests (geometry, auto-capture, spine fit, gutter gains)
 ./gradlew :app:lintDebug            # Android lint
 ```
 
-The debug APK bundles OpenCV's native libraries for all four CPU architectures, so it is large (~160 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture.
+The debug APK bundles OpenCV's and ONNX Runtime's native libraries for all four CPU architectures, so it is large (~330 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture; the model itself adds 31 MB.
+
+To regenerate the model:
+
+```bash
+git clone https://github.com/tanguymagne/UVDoc
+python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out app/src/main/assets/uvdoc.onnx   # needs torch, onnx, onnxruntime
+```
 
 ## Roadmap
 
 - [x] **Phase 1: Flat scanner MVP**: capture, detection, manual corners, perspective correction, filters, multi-page documents, PDF export
 - [x] **Phase 2: Real-time capture**: live outline, focus scoring, stability-based auto-capture, page-turn detection for continuous book scanning
-- [ ] **Phase 3: Book pages**: two-page spine detection and split, learned curved-page dewarping (UVDoc, MIT-licensed), finger removal
+- [x] **Phase 3: Book pages**: spine detection and split, on-device curved-page flattening (UVDoc), gutter shadow correction, finger removal
 - [ ] **Phase 4: Text**: on-device OCR (ML Kit), searchable PDFs, TXT/Markdown export, optional cloud parsing for tables and formulas
 - [ ] **Phase 5: Hardening**: offline queueing, low-end device performance, more export formats
 
 ## Tuning
 
-The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books.
+The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books. The same goes for the spine valley depth in `SpineDetector`, the skin margins in `FingerRemover`, and the gutter zone in `Gutter`.
 
 ## Third-party licenses
+
+- [UVDoc](https://github.com/tanguymagne/UVDoc) model weights: MIT, © 2023 Tanguy Magne (notice shipped in `assets/uvdoc_LICENSE.txt`)
+- [ONNX Runtime](https://github.com/microsoft/onnxruntime): MIT
 
 - [OpenCV](https://opencv.org/license/): Apache 2.0
 - [AndroidX](https://developer.android.com/jetpack/androidx) (CameraX, Room, AppCompat, RecyclerView…): Apache 2.0

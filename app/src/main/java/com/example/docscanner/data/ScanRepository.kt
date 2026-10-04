@@ -2,8 +2,7 @@ package com.example.docscanner.data
 
 import android.content.Context
 import android.graphics.Bitmap
-import com.example.docscanner.scan.PageFilter
-import com.example.docscanner.scan.Quad
+import com.example.docscanner.scan.PageSpec
 import com.example.docscanner.util.Bitmaps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,8 +32,7 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
     suspend fun addPage(
         documentId: Long?,
         capture: File,
-        corners: Quad,
-        filter: PageFilter,
+        spec: PageSpec,
         processed: Bitmap,
     ): Long = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
@@ -55,20 +53,20 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
                 position = dao.nextPosition(docId),
                 originalPath = original.path,
                 processedPath = processedFile.path,
-                corners = corners.serialize(),
-                filter = filter.name,
-            ),
+                corners = "",
+                filter = "",
+            ).withSpec(spec),
         )
         dao.touchDocument(docId, now)
         docId
     }
 
-    /** Re-processes an existing page with new corners or filter. Writes a new file so thumbnails refresh. */
-    suspend fun updatePage(page: PageEntity, corners: Quad, filter: PageFilter, processed: Bitmap) =
+    /** Re-processes an existing page with new settings. Writes a new file so thumbnails refresh. */
+    suspend fun updatePage(page: PageEntity, spec: PageSpec, processed: Bitmap) =
         withContext(Dispatchers.IO) {
             val newFile = File(File(page.processedPath).parentFile, "page_${UUID.randomUUID()}.jpg")
             Bitmaps.writeJpeg(processed, newFile)
-            dao.updatePage(page.copy(processedPath = newFile.path, corners = corners.serialize(), filter = filter.name))
+            dao.updatePage(page.copy(processedPath = newFile.path).withSpec(spec))
             File(page.processedPath).delete()
             dao.touchDocument(page.documentId, System.currentTimeMillis())
         }
@@ -99,6 +97,15 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         dao.deleteDocument(id)
         File(documentsDir, id.toString()).deleteRecursively()
     }
+
+    private fun PageEntity.withSpec(spec: PageSpec) = copy(
+        corners = spec.quad?.serialize() ?: "",
+        filter = spec.filter.name,
+        mode = spec.mode.name,
+        side = spec.side.name,
+        spine = spec.spine?.serialize(),
+        removeFingers = spec.removeFingers,
+    )
 
     private fun defaultTitle(now: Long) =
         "Scan " + SimpleDateFormat("yyyy-MM-dd HH.mm", Locale.getDefault()).format(Date(now))

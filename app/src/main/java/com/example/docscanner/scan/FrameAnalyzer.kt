@@ -31,6 +31,10 @@ data class LiveFrame(
  */
 class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.Analyzer {
 
+    /** Accept curved outlines too (book spreads); see [PageDetector.detect]. */
+    @Volatile
+    var loose = false
+
     private var rowBuffer = ByteArray(0)
     private val raw = Mat()
     private val upright = Mat()
@@ -39,7 +43,7 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
     override fun analyze(image: ImageProxy) {
         try {
             val gray = readUprightLuma(image)
-            val quad = PageDetector.detectInGray(gray)
+            val quad = PageDetector.detectInGray(gray, loose)
             val w = gray.cols()
             val h = gray.rows()
             onFrame(

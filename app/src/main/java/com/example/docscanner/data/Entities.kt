@@ -37,6 +37,13 @@ data class PageEntity(
     /** Corners as 0..1 fractions of the original image, see [com.example.docscanner.scan.Quad.normalized]. */
     val corners: String,
     val filter: String,
+    /** [com.example.docscanner.scan.PageMode] name. */
+    @ColumnInfo(defaultValue = "FLAT") val mode: String = "FLAT",
+    /** [com.example.docscanner.scan.PageSide] name; LEFT or RIGHT for a page cut from a book spread. */
+    @ColumnInfo(defaultValue = "NONE") val side: String = "NONE",
+    /** Book gutter, see [com.example.docscanner.scan.Spine.serialize]. */
+    val spine: String? = null,
+    @ColumnInfo(name = "remove_fingers", defaultValue = "0") val removeFingers: Boolean = false,
 )
 
 data class DocumentSummary(

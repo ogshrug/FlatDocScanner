@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import org.opencv.android.Utils
 import org.opencv.core.Core
 import org.opencv.core.Mat
+import org.opencv.core.MatOfInt
 import org.opencv.core.MatOfPoint
 import org.opencv.core.MatOfPoint2f
 import org.opencv.core.Size
@@ -20,7 +21,11 @@ object PageDetector {
     const val DETECT_MAX_DIM = 640
     private const val MIN_AREA_FRACTION = 0.15
 
-    fun detect(bitmap: Bitmap): Quad? {
+    /**
+     * @param loose also accept outlines that are not clean 4-point polygons (curved pages,
+     *   open books): the largest page-sized contour is reduced to 4 corners.
+     */
+    fun detect(bitmap: Bitmap, loose: Boolean = false): Quad? {
         val scale = DETECT_MAX_DIM.toDouble() / max(bitmap.width, bitmap.height)
         val small = if (scale < 1.0) {
             Bitmap.createScaledBitmap(
@@ -34,7 +39,7 @@ object PageDetector {
         try {
             Utils.bitmapToMat(small, rgba)
             Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
-            return detectInGray(gray)?.scaled(1.0 / s)?.clampedTo(bitmap.width, bitmap.height)
+            return detectInGray(gray, loose)?.scaled(1.0 / s)?.clampedTo(bitmap.width, bitmap.height)
         } finally {
             rgba.release()
             gray.release()
@@ -43,12 +48,13 @@ object PageDetector {
     }
 
     /** Detects in a grayscale image already at about [DETECT_MAX_DIM]. Leaves [gray] unchanged. */
-    fun detectInGray(gray: Mat): Quad? {
+    fun detectInGray(gray: Mat, loose: Boolean = false): Quad? {
         val blurred = Mat()
         try {
             Imgproc.GaussianBlur(gray, blurred, Size(5.0, 5.0), 0.0)
             val minArea = blurred.rows() * blurred.cols() * MIN_AREA_FRACTION
-            return findQuad(edgeMask(blurred), minArea) ?: findQuad(thresholdMask(blurred), minArea)
+            return findQuad(edgeMask(blurred), minArea, false)
+                ?: findQuad(thresholdMask(blurred), minArea, loose)
         } finally {
             blurred.release()
         }
@@ -75,7 +81,7 @@ object PageDetector {
         return mask
     }
 
-    private fun findQuad(mask: Mat, minArea: Double): Quad? {
+    private fun findQuad(mask: Mat, minArea: Double, loose: Boolean): Quad? {
         val contours = ArrayList<MatOfPoint>()
         val hierarchy = Mat()
         Imgproc.findContours(mask, contours, hierarchy, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE)
@@ -99,9 +105,40 @@ object PageDetector {
                 val quad = Quad.fromUnordered(pts.map { Pt(it.x, it.y) })
                 if (quad.isConvex() && quad.area() >= minArea) return quad
             }
-            return null
+            return if (loose) candidates.firstOrNull()?.let { looseQuad(it.first) } else null
         } finally {
             contours.forEach { it.release() }
+        }
+    }
+
+    /** Reduces a curved outline to 4 corners: its convex hull, simplified until 4 points remain. */
+    private fun looseQuad(contour: MatOfPoint): Quad? {
+        val hullIdx = MatOfInt()
+        Imgproc.convexHull(contour, hullIdx)
+        val all = contour.toArray()
+        val hull = MatOfPoint2f(*hullIdx.toArray().map { all[it] }.toTypedArray())
+        hullIdx.release()
+        val peri = Imgproc.arcLength(hull, true)
+        val approx = MatOfPoint2f()
+        try {
+            var eps = 0.02
+            while (eps <= 0.12) {
+                Imgproc.approxPolyDP(hull, approx, eps * peri, true)
+                val pts = approx.toArray()
+                if (pts.size == 4) {
+                    val q = Quad.fromUnordered(pts.map { Pt(it.x, it.y) })
+                    if (q.isConvex()) return q
+                }
+                if (pts.size < 4) break
+                eps += 0.01
+            }
+            // Last resort: the smallest rotated rectangle around the outline.
+            val box = Array(4) { org.opencv.core.Point() }
+            Imgproc.minAreaRect(hull).points(box)
+            return Quad.fromUnordered(box.map { Pt(it.x, it.y) })
+        } finally {
+            hull.release()
+            approx.release()
         }
     }
 

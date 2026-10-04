@@ -63,6 +63,8 @@ class CameraActivity : AppCompatActivity() {
     private var savedPages = 0
 
     private var autoMode = true
+    private var bookMode = false
+    private lateinit var analyzer: FrameAnalyzer
     private val autoCapture = AutoCapture()
     private var capturing = false
     private var lastLive: LiveFrame? = null
@@ -112,7 +114,18 @@ class CameraActivity : AppCompatActivity() {
         documentId = (if (saved >= 0) saved else fromIntent).takeIf { it >= 0 }
 
         autoMode = prefs.getBoolean(PREF_AUTO, true)
+        bookMode = prefs.getBoolean(PREF_BOOK, false)
+        analyzer = FrameAnalyzer { frame -> runOnUiThread { onLiveFrame(frame) } }
+        analyzer.loose = bookMode
         updateAutoButton()
+        updateBookButton()
+        binding.bookButton.setOnClickListener {
+            bookMode = !bookMode
+            prefs.edit { putBoolean(PREF_BOOK, bookMode) }
+            analyzer.loose = bookMode
+            updateBookButton()
+            if (bookMode) Toast.makeText(this, R.string.book_turned_on, Toast.LENGTH_LONG).show()
+        }
         binding.autoButton.setOnClickListener {
             autoMode = !autoMode
             prefs.edit { putBoolean(PREF_AUTO, autoMode) }
@@ -171,7 +184,7 @@ class CameraActivity : AppCompatActivity() {
                     )
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                    .also { a -> a.setAnalyzer(analysisExecutor, FrameAnalyzer { frame -> runOnUiThread { onLiveFrame(frame) } }) }
+                    .also { it.setAnalyzer(analysisExecutor, analyzer) }
                 provider.unbindAll()
                 provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture, analysis)
                 imageCapture = capture
@@ -209,9 +222,10 @@ class CameraActivity : AppCompatActivity() {
     private fun takePhoto(auto: Boolean) {
         val capture = imageCapture ?: return
         if (capturing) return
-        setCapturing(true, showProgress = !auto)
+        setCapturing(true, showProgress = !auto && !bookMode)
         val live = lastLive
         val liveQuad = live?.quad
+        val book = bookMode
         if (!auto) autoCapture.onManualCapture(live?.signature, live?.timeMillis ?: 0L)
         binding.preview.display?.let { capture.targetRotation = it.rotation }
         val file = newCaptureFile(this)
@@ -220,9 +234,10 @@ class CameraActivity : AppCompatActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    if (auto) {
+                    // Book spreads are always saved directly: each photo becomes two pages.
+                    if (auto || book) {
                         flash()
-                        saveInBackground(file, liveQuad)
+                        saveInBackground(file, liveQuad, book)
                         setCapturing(false)
                     } else {
                         openCrop(file)
@@ -240,10 +255,13 @@ class CameraActivity : AppCompatActivity() {
     }
 
     /** Saves auto-captured pages one at a time, so the first save creates the document exactly once. */
-    private fun saveInBackground(file: File, liveQuad: Quad?) {
+    private fun saveInBackground(file: File, liveQuad: Quad?, spread: Boolean) {
         val job = lifecycleScope.launch {
             saveLock.withLock {
-                runCatching { ScanPipeline.savePage(repository, file, documentId, liveQuad) }
+                runCatching {
+                    if (spread) ScanPipeline.saveSpread(repository, file, documentId, liveQuad)
+                    else ScanPipeline.savePage(repository, file, documentId, liveQuad)
+                }
                     .onSuccess { documentId = it }
                     .onFailure {
                         file.delete()
@@ -304,7 +322,7 @@ class CameraActivity : AppCompatActivity() {
         val id = documentId
         lifecycleScope.launch {
             savedPages = if (id == null) 0 else repository.getPages(id).size
-            val total = savedPages + pendingSaves.size
+            val total = savedPages + pendingSaves.size * (if (bookMode) 2 else 1)
             val count = resources.getQuantityString(R.plurals.page_count, total, total)
             binding.pageCount.text = when {
                 total == 0 -> getString(R.string.camera_no_pages)
@@ -313,6 +331,12 @@ class CameraActivity : AppCompatActivity() {
             }
             binding.doneButton.isEnabled = total > 0
         }
+    }
+
+    private fun updateBookButton() {
+        binding.bookButton.setText(if (bookMode) R.string.book_on else R.string.book_off)
+        binding.bookButton.contentDescription =
+            getString(if (bookMode) R.string.book_on_description else R.string.book_off_description)
     }
 
     private fun updateAutoButton() {
@@ -339,6 +363,7 @@ class CameraActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_DOCUMENT_ID = "document_id"
         private const val PREF_AUTO = "auto_capture"
+        private const val PREF_BOOK = "book_mode"
 
         fun intent(context: Context, documentId: Long?) = Intent(context, CameraActivity::class.java)
             .putExtra(EXTRA_DOCUMENT_ID, documentId ?: -1L)

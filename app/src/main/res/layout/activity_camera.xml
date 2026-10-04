@@ -56,11 +56,19 @@
                 android:textColor="@android:color/white" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/bookButton"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:minWidth="80dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/autoButton"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="96dp" />
+                android:minWidth="80dp" />
         </LinearLayout>
 
         <TextView

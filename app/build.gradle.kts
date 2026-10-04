@@ -33,6 +33,10 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    androidResources {
+        // The dewarping model is read straight from the APK.
+        noCompress += "onnx"
+    }
 }
 
 dependencies {
@@ -55,6 +59,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.opencv)
+    implementation(libs.onnxruntime.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.espresso.core)
