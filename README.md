@@ -2,7 +2,7 @@
 
 An Android document and book scanner. Point your phone at a page and FlatDocScanner outlines it live, takes the photo by itself once you hold still, squares it up, cleans it and adds it to a multi-page document you can share as a PDF. Turn the page, and it captures the next one.
 
-**Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network. It also evens out the gutter shadow and removes fingers holding the pages down. Everything runs on the phone: no account, no upload.
+**Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network. It also evens out the gutter shadow and removes fingers holding the pages down. Everything runs on the phone: no account, no upload. The app does not even have internet permission.
 
 ## Features
 
@@ -103,7 +103,7 @@ Corners are stored as fractions of the image size, so a page can be re-cropped f
 ## Project structure
 
 ```
-app/src/main/java/com/example/docscanner/
+app/src/main/java/io/github/ogshrug/flatdocscanner/
 ├── DocScannerApp.kt          Application: loads OpenCV, creates the repository
 ├── scan/
 │   ├── Quad.kt               Corner geometry: ordering, convexity, output size (pure Kotlin)
@@ -200,6 +200,21 @@ python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out app/src/main/assets/uvdoc.
 - [x] **Phase 4: Text (on-device)**: opt-in OCR per page or document (ML Kit, Latin and Devanagari), searchable PDFs, TXT/Markdown export
 - [ ] **Phase 4b: Structured text (cloud)**: optional server-side parsing for tables and formulas, more scripts
 - [ ] **Phase 5: Hardening**: offline queueing, low-end device performance, more export formats
+
+## Privacy
+
+- No account, no analytics, no ads, no servers. The app has **no internet permission**: ML Kit's network permissions (used only for Google usage statistics) are removed in the manifest, so nothing can leave the device.
+- Scans are stored in app-private storage. Android cloud backup includes settings only; device-to-device transfer (new phone setup) includes scans.
+- Full policy: [PRIVACY.md](PRIVACY.md).
+
+## Release builds
+
+Release builds are shrunk with R8 and signed with an upload key kept outside git. See [RELEASING.md](RELEASING.md) for the key, the Play Console setup (Data safety answers, listing) and the per-release checklist; the store listing draft is in [docs/store-listing.md](docs/store-listing.md).
+
+```bash
+./gradlew :app:bundleRelease     # Play upload: app/build/outputs/bundle/release/app-release.aab
+./gradlew :app:assembleRelease   # installable APK for testing the shrunk build
+```
 
 ## Tuning
 

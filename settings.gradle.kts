@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DocScanner"
+rootProject.name = "FlatDocScanner"
 include(":app")

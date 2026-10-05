@@ -1,12 +1,27 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# R8 keep rules for the release build. AGP combines every file in src/main/keepRules.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ONNX Runtime: the native library looks up these Java classes and members by name (JNI).
+-keep class ai.onnxruntime.** { *; }
+-keepclassmembers class ai.onnxruntime.** { native <methods>; }
+
+# OpenCV: Java wrappers bound to native code by name.
+-keep class org.opencv.** { *; }
+-keepclassmembers class org.opencv.** { native <methods>; }
+
+# Our own native-method declarations (none today), and anything reached through JNI.
+-keepclasseswithmembernames class * { native <methods>; }
+
+# Keep line numbers so crash reports from users point at the right code; hide file names.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# ML Kit text recognition. ML Kit wires itself up at start-up by instantiating component
+# registrars named in the manifest (reflection); in R8 full mode those were stripped, and
+# TextRecognition.getClient() then failed with a NullPointerException in release builds.
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_text_common.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_text_bundled_common.** { *; }
+-keep class com.google.android.gms.internal.mlkit_vision_common.** { *; }
+-keep class com.google.android.gms.internal.mlkit_common.** { *; }
+-keep class com.google.firebase.components.** { *; }
+-keep class * implements com.google.firebase.components.ComponentRegistrar { <init>(); }

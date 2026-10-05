@@ -1,22 +1,17 @@
 <resources>
     <string name="app_name">FlatDocScanner</string>
 
-    <string name="empty_title">No scans yet</string>
-    <string name="empty_body">Tap Scan to photograph a document. You can add more pages, fix the corners and export a PDF.</string>
 
     <string name="action_scan">Scan</string>
     <string name="action_close">Close camera</string>
     <string name="action_import">Import from gallery</string>
     <string name="action_capture">Take photo</string>
-    <string name="action_done">Done</string>
     <string name="action_back">Back</string>
     <string name="action_next">Next</string>
     <string name="action_save">Save page</string>
     <string name="action_full_image">Use full image</string>
     <string name="action_add_page">Add page</string>
-    <string name="action_share_pdf">Share PDF</string>
     <string name="action_rename">Rename</string>
-    <string name="action_delete_document">Delete document</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
 
@@ -36,32 +31,29 @@
     <string name="filter_gray">Grayscale</string>
     <string name="filter_bw">Black &amp; white</string>
 
-    <plurals name="page_count">
-        <item quantity="one">%d page</item>
-        <item quantity="other">%d pages</item>
-    </plurals>
-    <string name="document_subtitle">%1$s · %2$s</string>
-    <string name="page_number">Page %d</string>
-    <string name="camera_no_pages">Point at a page and tap the shutter</string>
-    <string name="camera_saving">%1$s · saving…</string>
 
-    <string name="book_on">Book</string>
-    <string name="book_off">Page</string>
     <string name="book_on_description">Book mode: each photo of an open book becomes two pages. Tap for single pages.</string>
     <string name="book_off_description">Single-page mode. Tap to scan an open book two pages at a time.</string>
     <string name="book_turned_on">Book mode: fit both pages in the frame. Each photo is split into two flattened pages.</string>
     <string name="flash_on_description">Flash is on. Tap to turn it off.</string>
     <string name="flash_off_description">Flash is off. Tap to turn it on.</string>
-    <string name="timer_off_description">Interval timer is off. Tap to take a photo every 3 seconds.</string>
-    <string name="timer_on_description">Taking a photo every %d seconds. Tap to change.</string>
-    <string name="timer_turned_on">Taking a photo every %d seconds. Turn the page between shots.</string>
+    <string name="timer_off_description">Interval timer is off. Tap to take photos at a steady interval (set in Settings).</string>
+    <plurals name="timer_on_description">
+        <item quantity="one">Taking a photo every second. Tap to change.</item>
+        <item quantity="other">Taking a photo every %d seconds. Tap to change.</item>
+    </plurals>
+    <plurals name="timer_turned_on">
+        <item quantity="one">Taking a photo every second. Turn the page between shots.</item>
+        <item quantity="other">Taking a photo every %d seconds. Turn the page between shots.</item>
+    </plurals>
     <string name="timer_seconds_short">%ds</string>
     <string name="mode_title_page">Single page</string>
     <string name="mode_title_book">Book · two pages</string>
     <string name="badge_auto">AUTO</string>
-    <string name="done_description">Finish. %d pages scanned.</string>
-    <string name="auto_on">Auto</string>
-    <string name="auto_off">Manual</string>
+    <plurals name="done_description">
+        <item quantity="one">Finish. %d page scanned.</item>
+        <item quantity="other">Finish. %d pages scanned.</item>
+    </plurals>
     <string name="auto_on_description">Auto-capture is on. Tap to switch to manual.</string>
     <string name="auto_off_description">Auto-capture is off. Tap to switch to auto.</string>
     <string name="auto_turned_on">Auto-capture on: hold still over a page, then turn the page for the next one</string>
@@ -82,9 +74,6 @@
     <string name="save_failed">The page couldn\'t be saved. Check your free storage and try again.</string>
     <string name="export_failed">The PDF couldn\'t be created. Try again.</string>
 
-    <string name="rename_title">Rename document</string>
-    <string name="delete_document_title">Delete this document?</string>
-    <string name="delete_document_body">All of its pages will be removed from this phone. This can\'t be undone.</string>
     <string name="delete_page_title">Delete page %d?</string>
     <string name="delete_page_body">The page will be removed from this document. This can\'t be undone.</string>
     <string name="delete_page_last_body">This is the only page, so the whole document will be deleted.</string>
@@ -94,23 +83,11 @@
     <string name="action_select">Select pages</string>
     <string name="action_select_all">Select all</string>
     <string name="action_cancel_selection">Cancel selection</string>
-    <string name="action_share_images">Share as images</string>
-    <string name="action_share_images_all">Share all as images</string>
-    <string name="action_share_image">Share image</string>
-    <string name="action_share_pdf_selected">Share as PDF</string>
-    <string name="action_delete_selected">Delete selected</string>
     <string name="select_pages_hint">Tap pages to select</string>
-    <string name="viewer_title">Page %1$d of %2$d</string>
     <string name="viewer_page_description">Page %1$d. Pinch or double-tap to zoom, swipe for other pages.</string>
-    <string name="action_edit_page">Edit page</string>
-    <string name="action_delete_page">Delete page</string>
     <plurals name="selected_count">
         <item quantity="one">%d selected</item>
         <item quantity="other">%d selected</item>
-    </plurals>
-    <plurals name="delete_pages_title">
-        <item quantity="one">Delete %d page?</item>
-        <item quantity="other">Delete %d pages?</item>
     </plurals>
 
     <!-- Text recognition (opt-in per page or per document) -->
@@ -118,23 +95,20 @@
     <string name="action_recognize_all">Recognize text in all pages</string>
     <string name="action_recognize_selected">Recognize text</string>
     <string name="action_remove_text_all">Remove recognized text</string>
-    <string name="action_share_text">Share as text</string>
-    <string name="action_share_markdown">Share as Markdown</string>
     <string name="action_text_language">Text language</string>
-    <string name="action_copy">Copy</string>
     <string name="action_share">Share</string>
     <string name="action_remove_text">Remove text</string>
-    <string name="action_recognize_again">Recognize again</string>
     <string name="action_recognize">Recognize</string>
     <string name="script_latin">Latin (English and most European languages)</string>
     <string name="script_devanagari">Devanagari (Hindi, Marathi, Nepali…) + Latin</string>
-    <string name="text_sheet_title">Text on page %d</string>
     <string name="text_sheet_empty">No text was found on this page.</string>
     <string name="text_copied">Text copied</string>
-    <string name="recognizing">Recognizing text…</string>
     <string name="recognizing_progress">Recognizing page %1$d of %2$d…</string>
     <string name="recognize_failed">The text couldn\'t be recognized. Try again.</string>
-    <string name="recognize_done">Text recognized on %1$d of %2$d pages</string>
+    <plurals name="recognize_done">
+        <item quantity="one">Text recognized on %1$d of %2$d page</item>
+        <item quantity="other">Text recognized on %1$d of %2$d pages</item>
+    </plurals>
     <string name="text_page_label">%1$s · Text</string>
     <string name="no_text_yet_title">No text recognized yet</string>
     <string name="no_text_yet_body">Recognize the text in all pages first? It stays on this phone.</string>
@@ -152,8 +126,6 @@
     </plurals>
     <string name="share_as_pdf">PDF</string>
     <string name="share_as_images">Images</string>
-    <string name="share_as_zip">Images in a ZIP file</string>
-    <string name="share_as_text">Text (.txt)</string>
     <string name="share_as_markdown">Markdown (.md)</string>
     <string name="share_as_word">Word document (.docx)</string>
     <string name="action_search">Search text</string>
@@ -171,14 +143,12 @@
     <string name="action_read_aloud">Read aloud</string>
     <string name="action_stop_reading">Stop reading</string>
     <string name="tts_unavailable">Read aloud isn\'t available on this phone. Install a text-to-speech voice in system settings.</string>
-    <string name="text_reader_title">%1$d / %2$d</string>
     <string name="text_not_recognized_body">The text on this page hasn\'t been recognized yet.</string>
 
     <!-- Library -->
     <string name="library_title">Library</string>
     <string name="new_folder">New folder</string>
     <string name="new_folder_title">New folder</string>
-    <string name="folder_name">Folder name</string>
     <string name="action_create">Create</string>
     <string name="library_empty_title">No folders yet</string>
     <string name="library_empty_body">Tap Scan to photograph a document, or Import to scan photos you already have.</string>
@@ -251,7 +221,6 @@
     </plurals>
     <string name="cover_set">Cover changed</string>
     <string name="change_cover_hint">Select one page, then Set as cover.</string>
-    <string name="crop_one_page">Select one page to crop.</string>
     <plurals name="move_pages_to_trash">
         <item quantity="one">Move %d page to the Trash?</item>
         <item quantity="other">Move %d pages to the Trash?</item>
@@ -294,7 +263,10 @@
     <string name="script_latin_short">Latin</string>
     <string name="script_devanagari_short">Devanagari</string>
     <string name="settings_timer">Interval timer</string>
-    <string name="settings_timer_value">Every %d seconds</string>
+    <plurals name="settings_timer_value">
+        <item quantity="one">Every second</item>
+        <item quantity="other">Every %d seconds</item>
+    </plurals>
     <string name="settings_app">App</string>
     <string name="settings_start_screen">Start screen</string>
     <string name="settings_start_library">Library</string>

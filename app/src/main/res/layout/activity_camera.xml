@@ -11,7 +11,7 @@
         android:layout_height="match_parent"
         app:scaleType="fitCenter" />
 
-    <com.example.docscanner.ui.PageOverlayView
+    <io.github.ogshrug.flatdocscanner.ui.PageOverlayView
         android:id="@+id/overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />

@@ -52,7 +52,7 @@
         android:layout_weight="1"
         android:background="?attr/colorSurfaceContainerLowest">
 
-        <com.example.docscanner.ui.CornerEditView
+        <io.github.ogshrug.flatdocscanner.ui.CornerEditView
             android:id="@+id/cornerEditor"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

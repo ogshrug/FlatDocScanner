@@ -1,20 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "com.example.docscanner"
+    namespace = "io.github.ogshrug.flatdocscanner"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.docscanner"
+        applicationId = "io.github.ogshrug.flatdocscanner"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -25,11 +27,27 @@ android {
         }
     }
 
+    // Release signing comes from keystore.properties (git-ignored); see RELEASING.md.
+    val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }
+        ?.let { f -> Properties().apply { f.inputStream().use { load(it) } } }
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8: shrink and optimise the code; keep rules live in src/main/keepRules.
             optimization {
-                enable = false
+                enable = true
             }
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
     compileOptions {

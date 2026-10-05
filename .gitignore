@@ -22,3 +22,7 @@ build/
 /reference.png
 build.log
 /apk/
+
+# Release signing key and its passwords; never commit
+/keystore/
+keystore.properties

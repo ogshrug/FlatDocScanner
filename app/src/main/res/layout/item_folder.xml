@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <com.example.docscanner.ui.HighlightImageView
+        <io.github.ogshrug.flatdocscanner.ui.HighlightImageView
             android:id="@+id/cover"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
