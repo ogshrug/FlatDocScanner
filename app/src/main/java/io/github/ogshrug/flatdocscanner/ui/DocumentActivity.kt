@@ -43,7 +43,6 @@ import io.github.ogshrug.flatdocscanner.export.GalleryExporter
 import io.github.ogshrug.flatdocscanner.ocr.PageTextCodec
 import io.github.ogshrug.flatdocscanner.repository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -155,7 +154,7 @@ class DocumentActivity : AppCompatActivity() {
             R.id.action_rename -> promptText(R.string.action_rename_folder, title, R.string.action_rename) { name ->
                 lifecycleScope.launch { repository.renameDocument(documentId, name) }
             }
-            R.id.action_delete -> confirmDeleteFolder()
+            R.id.action_delete -> deleteFolder()
             R.id.action_settings -> startActivity(Intent(this, SettingsActivity::class.java))
         }
         return true
@@ -404,31 +403,31 @@ class DocumentActivity : AppCompatActivity() {
         lifecycleScope.launch {
             setSelecting(false)
             repository.deletePages(pages)
-            Snackbar.make(
-                binding.root,
+            showUndo(
+                binding.root, binding.addPageButton,
                 resources.getQuantityString(R.plurals.pages_moved_to_trash, pages.size, pages.size),
-                UNDO_MILLIS,
-            )
-                .setAnchorView(binding.addPageButton)
-                .setAction(R.string.action_undo) {
-                    lifecycleScope.launch { repository.undoDeletePages(documentId, pages, orderBefore) }
-                }
-                .show()
+            ) { repository.undoDeletePages(documentId, pages, orderBefore) }
         }
     }
 
-    private fun confirmDeleteFolder() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(resources.getQuantityString(R.plurals.move_folders_to_trash, 1, 1))
-            .setMessage(R.string.trash_body)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
-                lifecycleScope.launch {
-                    repository.deleteDocument(documentId)
-                    finish()
-                }
-            }
-            .show()
+    /** Moves this folder to the Trash and closes it; the library underneath offers Undo. */
+    private fun deleteFolder() {
+        val id = documentId
+        lifecycleScope.launch {
+            repository.deleteDocument(id)
+            PendingUndo.leave(
+                PendingUndo.Offer(resources.getQuantityString(R.plurals.folders_moved_to_trash, 1, 1)) {
+                    repository.restoreDocument(id)
+                },
+            )
+            finish()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // The viewer closes when its last page is deleted, and leaves the Undo for here.
+        PendingUndo.take()?.let { showUndo(binding.root, binding.addPageButton, it.message, it.undo) }
     }
 
     /** Text exports need recognised text: offers to recognise it first if none of [pages] has any. */

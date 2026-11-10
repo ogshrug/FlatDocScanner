@@ -81,9 +81,6 @@
     <string name="save_failed">The page couldn\'t be saved. Check your free storage and try again.</string>
     <string name="export_failed">The PDF couldn\'t be created. Try again.</string>
 
-    <string name="delete_page_title">Delete page %d?</string>
-    <string name="delete_page_body">The page moves to the Trash, where you can restore it for 30 days.</string>
-    <string name="delete_page_last_body">This is the folder\'s only page. It moves to the Trash, where you can restore it for 30 days; the folder stays.</string>
     <string name="share_pdf_chooser">Share PDF</string>
     <string name="share_images_chooser">Share images</string>
     <string name="export_images_failed">The images couldn\'t be prepared. Try again.</string>
@@ -173,12 +170,6 @@
     <string name="action_deselect_all">Deselect all</string>
     <string name="select_folders_first">Select folders first. Hold a folder to start selecting.</string>
     <string name="select_pages_first">Select pages first. Hold a page to start selecting.</string>
-    <plurals name="move_folders_to_trash">
-        <item quantity="one">Move %d folder to the Trash?</item>
-        <item quantity="other">Move %d folders to the Trash?</item>
-    </plurals>
-    <string name="trash_body">You can restore it from the Trash for 30 days.</string>
-    <string name="action_move_to_trash">Move to Trash</string>
     <string name="action_undo">Undo</string>
     <plurals name="folders_moved_to_trash">
         <item quantity="one">%d folder moved to the Trash</item>

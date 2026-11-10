@@ -1,8 +1,10 @@
 package io.github.ogshrug.flatdocscanner.scan
 
 import android.os.SystemClock
+import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import io.github.ogshrug.flatdocscanner.BuildConfig
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -42,8 +44,11 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
 
     override fun analyze(image: ImageProxy) {
         try {
+            val started = SystemClock.elapsedRealtimeNanos()
             val rgba = readUprightRgba(image)
+            val read = SystemClock.elapsedRealtimeNanos()
             val quad = PageDetector.detectLive(rgba)
+            val detected = SystemClock.elapsedRealtimeNanos()
             Imgproc.cvtColor(rgba, gray, Imgproc.COLOR_RGBA2GRAY)
             val w = gray.cols()
             val h = gray.rows()
@@ -57,9 +62,33 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
                     timeMillis = SystemClock.elapsedRealtime(),
                 ),
             )
+            if (BuildConfig.DEBUG) logTiming(started, read, detected)
         } finally {
             image.close()
         }
+    }
+
+    private var timedFrames = 0
+    private var readNanos = 0L
+    private var detectNanos = 0L
+    private var restNanos = 0L
+    private var windowStart = 0L
+
+    /** Debug builds only: average time per frame for each stage, once every 30 frames. */
+    private fun logTiming(started: Long, read: Long, detected: Long) {
+        val now = SystemClock.elapsedRealtimeNanos()
+        if (timedFrames == 0) windowStart = started
+        readNanos += read - started
+        detectNanos += detected - read
+        restNanos += now - detected
+        if (++timedFrames < 30) return
+        Log.i(
+            "FrameAnalyzer",
+            "per frame: read %.1f ms, detect %.1f ms, rest %.1f ms; %.1f frames/s".format(
+                readNanos / 30e6, detectNanos / 30e6, restNanos / 30e6, 30e9 / (now - windowStart),
+            ),
+        )
+        timedFrames = 0; readNanos = 0; detectNanos = 0; restNanos = 0
     }
 
     private fun readUprightRgba(image: ImageProxy): Mat {

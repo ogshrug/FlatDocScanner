@@ -32,10 +32,7 @@ object Dewarper {
     private lateinit var appContext: Context
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
     private val session: OrtSession by lazy {
-        val options = OrtSession.SessionOptions().apply {
-            setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
-        }
-        env.createSession(ModelAssets.map(appContext, MODEL_ASSET), options)
+        ModelAssets.session(appContext, MODEL_ASSET, Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
     }
 
     fun init(context: Context) {

@@ -23,7 +23,6 @@ import io.github.ogshrug.flatdocscanner.databinding.ItemPageViewerBinding
 import io.github.ogshrug.flatdocscanner.ocr.PageTextCodec
 import io.github.ogshrug.flatdocscanner.repository
 import io.github.ogshrug.flatdocscanner.util.Bitmaps
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -165,7 +164,7 @@ class PageViewerActivity : AppCompatActivity() {
                 lifecycleScope.launch { repository.setCover(documentId, page.id) }
                 Toast.makeText(this, R.string.cover_set, Toast.LENGTH_SHORT).show()
             },
-            ActionSheet.Action(R.drawable.ic_delete, R.string.action_delete, destructive = true) { confirmDelete(page) },
+            ActionSheet.Action(R.drawable.ic_delete, R.string.action_delete, destructive = true) { moveToTrash(page) },
         ))
     }
 
@@ -235,17 +234,19 @@ class PageViewerActivity : AppCompatActivity() {
         }
     }
 
-    private fun confirmDelete(page: PageEntity) {
-        val number = adapter.pages.indexOfFirst { it.id == page.id } + 1
-        val last = adapter.pages.size == 1
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.delete_page_title, number))
-            .setMessage(if (last) R.string.delete_page_last_body else R.string.delete_page_body)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
-                lifecycleScope.launch { repository.deletePage(page) }
-            }
-            .show()
+    /**
+     * Moves the page to the Trash straight away and offers Undo, which puts it back where it
+     * was. Deleting the only page closes the viewer, so the folder screen shows that Undo.
+     */
+    private fun moveToTrash(page: PageEntity) {
+        val orderBefore = adapter.pages.map { it.id }
+        val message = resources.getQuantityString(R.plurals.pages_moved_to_trash, 1, 1)
+        val undo: suspend () -> Unit = { repository.undoDeletePages(documentId, listOf(page), orderBefore) }
+        if (orderBefore.size == 1) PendingUndo.leave(PendingUndo.Offer(message, undo))
+        lifecycleScope.launch {
+            repository.deletePages(listOf(page))
+            if (orderBefore.size > 1) showUndo(binding.root, binding.bottom, message, undo)
+        }
     }
 
     private inner class ViewerAdapter : RecyclerView.Adapter<ViewerAdapter.Holder>() {

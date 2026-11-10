@@ -39,9 +39,17 @@
         <item name="floatingActionButtonStyle">@style/Widget.DocScanner.Fab</item>
         <item name="extendedFloatingActionButtonStyle">@style/Widget.DocScanner.ExtendedFab</item>
         <item name="toolbarStyle">@style/Widget.DocScanner.Toolbar</item>
+        <item name="bottomSheetDialogTheme">@style/ThemeOverlay.DocScanner.BottomSheet</item>
         <item name="snackbarStyle">@style/Widget.DocScanner.Snackbar</item>
         <item name="snackbarButtonStyle">@style/Widget.DocScanner.SnackbarButton</item>
         <item name="snackbarTextViewStyle">@style/Widget.DocScanner.SnackbarText</item>
+    </style>
+
+    <!-- Sheets run down behind the navigation bar instead of stopping above it. -->
+    <style name="ThemeOverlay.DocScanner.BottomSheet" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="enableEdgeToEdge">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="paddingBottomSystemWindowInsets">true</item>
     </style>
 
     <style name="Widget.DocScanner.Toolbar" parent="Widget.Material3.Toolbar">

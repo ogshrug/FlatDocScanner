@@ -3,6 +3,7 @@ package io.github.ogshrug.flatdocscanner.ui
 import android.animation.ObjectAnimator
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.SystemClock
 import android.util.LruCache
 import android.view.View
 import android.view.ViewGroup
@@ -10,10 +11,13 @@ import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
+import androidx.lifecycle.lifecycleScope
+import com.google.android.material.snackbar.Snackbar
 import io.github.ogshrug.flatdocscanner.R
 import io.github.ogshrug.flatdocscanner.util.Bitmaps
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +40,37 @@ fun ComponentActivity.enableDarkEdgeToEdge() {
 
 /** How long an Undo bar stays up: long enough to read it and reach the button. */
 const val UNDO_MILLIS = 6000
+
+/**
+ * An Undo offer from a screen that closes as part of the deletion (a folder deleting itself,
+ * the viewer losing its last page). The screen underneath picks it up when it comes back.
+ */
+object PendingUndo {
+    class Offer(val message: String, val undo: suspend () -> Unit)
+
+    private var offer: Offer? = null
+    private var leftAt = 0L
+
+    fun leave(offer: Offer) {
+        this.offer = offer
+        leftAt = SystemClock.elapsedRealtime()
+    }
+
+    /** The waiting offer, if one was left in the last few seconds. */
+    fun take(): Offer? {
+        val waiting = offer
+        offer = null
+        return waiting?.takeIf { SystemClock.elapsedRealtime() - leftAt < UNDO_MILLIS }
+    }
+}
+
+/** Shows an Undo bar for something that has already been moved to the Trash. */
+fun AppCompatActivity.showUndo(root: View, anchor: View?, message: String, undo: suspend () -> Unit) {
+    Snackbar.make(root, message, UNDO_MILLIS)
+        .apply { if (anchor != null && anchor.isShown) anchorView = anchor }
+        .setAction(R.string.action_undo) { lifecycleScope.launch { undo() } }
+        .show()
+}
 
 /** Keeps a floating button above the navigation bar by adding the bar's height to its margin. */
 fun View.liftAboveNavigationBar() {

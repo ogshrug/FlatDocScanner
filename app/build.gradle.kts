@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.ogshrug.flatdocscanner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -42,6 +42,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // A separate package, so a debug build installs beside the release app
+            // instead of being refused for its different signature.
+            applicationIdSuffix = ".debug"
+        }
         release {
             // R8: shrink and optimise the code; keep rules live in src/main/keepRules.
             optimization {

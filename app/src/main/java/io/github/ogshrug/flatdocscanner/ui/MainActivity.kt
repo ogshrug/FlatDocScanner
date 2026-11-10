@@ -34,7 +34,6 @@ import io.github.ogshrug.flatdocscanner.export.PdfOptions
 import io.github.ogshrug.flatdocscanner.repository
 import io.github.ogshrug.flatdocscanner.settings
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -231,17 +230,17 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             docs.forEach { repository.deleteDocument(it.id) }
             setSelecting(false)
-            Snackbar.make(
-                binding.root,
+            showUndo(
+                binding.root, binding.scanButton,
                 resources.getQuantityString(R.plurals.folders_moved_to_trash, docs.size, docs.size),
-                UNDO_MILLIS,
-            )
-                .setAnchorView(binding.scanButton)
-                .setAction(R.string.action_undo) {
-                    lifecycleScope.launch { docs.forEach { repository.restoreDocument(it.id) } }
-                }
-                .show()
+            ) { docs.forEach { repository.restoreDocument(it.id) } }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // A folder that was deleted from its own screen offers its Undo here.
+        PendingUndo.take()?.let { showUndo(binding.root, binding.scanButton, it.message, it.undo) }
     }
 
     /** Hands picked photos to [ImportActivity], which scans them into a new folder. */

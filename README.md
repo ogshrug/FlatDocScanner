@@ -23,7 +23,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Tap to focus, pinch to zoom** on the preview. The screen stays on while you scan.
 - **Camera capture** with CameraX, plus **import from gallery**
 - **Share photos to the app**: share one or more images from the gallery or any app (or "Open with"), and each is scanned into a new document
-- **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 4.8 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
+- **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 2.4 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
 - **Manual corner adjustment**: drag any corner, with a magnifier that shows exactly where it sits. If the corners cross, the outline turns red and saving is blocked until they're fixed.
 - **Perspective correction** squares the page from its four corners
 - **Filters**:
@@ -150,9 +150,10 @@ app/src/main/java/io/github/ogshrug/flatdocscanner/
 │   └── UiUtils.kt            Insets and thumbnail cache
 └── util/Bitmaps.kt           EXIF-aware sampled decoding, JPEG writing
 
-app/src/main/assets/uvdoc.onnx   UVDoc model (31 MB), exported by tools/export_uvdoc_onnx.py
-app/src/main/assets/docaligner_lcnet100.onnx   DocAligner LCNet-100 corner model (4.8 MB), as published by DocsaidLab
+app/src/main/assets/uvdoc.onnx   UVDoc model (16 MB), exported by tools/export_uvdoc_onnx.py, then halved
+app/src/main/assets/docaligner_lcnet100.onnx   DocAligner LCNet-100 corner model (2.4 MB), DocsaidLab's weights, halved
 tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTorch
+tools/halve_model.py             Stores a model's weights as 16-bit floats (half the file, same computation)
 ```
 
 ## Tech stack
@@ -185,13 +186,16 @@ Requirements:
 ./gradlew :app:connectedDebugAndroidTest   # on a device/emulator: detection, both models, OCR, PDF
 ```
 
-The debug APK bundles OpenCV's and ONNX Runtime's native libraries for all four CPU architectures, so it is large (~330 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture; the model itself adds 31 MB.
+Debug builds use the package `io.github.ogshrug.flatdocscanner.debug`, so they install beside the release app rather than being refused for their different signature. `SpeedDeviceTest` times detection, finishing and flattening on the connected device and writes the results to logcat under the tag `SPEED`; debug builds also log per-frame camera timings under `FrameAnalyzer`. Every push runs the unit tests, lint and a debug build on GitHub Actions (`.github/workflows/ci.yml`).
+
+The debug APK bundles OpenCV's and ONNX Runtime's native libraries for all four CPU architectures, so it is large (~330 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture; the two models add 18 MB.
 
 To regenerate the model:
 
 ```bash
 git clone https://github.com/tanguymagne/UVDoc
-python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out app/src/main/assets/uvdoc.onnx   # needs torch, onnx, onnxruntime
+python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out uvdoc_full.onnx   # needs torch, onnx, onnxruntime
+python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
 ```
 
 ## Roadmap
@@ -221,7 +225,7 @@ Release builds are shrunk with R8 and signed with an upload key kept outside git
 ## Performance notes
 
 - **Live preview**: camera frames are read in place from native memory (no per-frame copies into the Java heap), and the corner model reuses its input and output buffers, so the analyser allocates almost nothing per frame.
-- **Models**: both `.onnx` files are memory-mapped from the APK rather than read into byte arrays, and the corner model is loaded in the background at app start so the camera's first frame isn't held up. The flattening model is loaded ahead of time when Book mode is on.
+- **Models**: both `.onnx` files are memory-mapped from the APK rather than read into byte arrays, and the corner model is loaded in the background at app start so the camera's first frame isn't held up. The flattening model is loaded ahead of time when Book mode is on. Their weights are stored as 16-bit floats and widened when the model loads, which halves both files (31.6 → 15.8 MB and 4.8 → 2.4 MB); the largest change in either model's output on test images was 0.001, and speed is unchanged. Convolutions run on ONNX Runtime's XNNPACK provider, about a tenth faster than its default kernels on a Helio G96 phone, with the default path as a fallback.
 - **Saving a page**: finishing steps that don't apply (gutter, fingers, filter, rotation) are skipped instead of copying the page through.
 - **Lists**: the library and folder grids update by diff, thumbnails for views that scroll away are cancelled, and at most four are decoded at once.
 

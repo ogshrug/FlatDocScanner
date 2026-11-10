@@ -30,12 +30,7 @@ object CornerModel {
 
     private lateinit var appContext: Context
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
-    private val session: OrtSession by lazy {
-        env.createSession(
-            ModelAssets.map(appContext, MODEL_ASSET),
-            OrtSession.SessionOptions().apply { setIntraOpNumThreads(2) },
-        )
-    }
+    private val session: OrtSession by lazy { ModelAssets.session(appContext, MODEL_ASSET, threads = 2) }
 
     // Working memory, reused for every frame: the live preview calls detect() many times a
     // second, and allocating half a megabyte each time keeps the garbage collector busy.
