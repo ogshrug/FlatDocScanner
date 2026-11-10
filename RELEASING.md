@@ -36,7 +36,7 @@ To use the key on another computer, copy both files to the same places.
 ## Every release
 
 1. Bump `versionCode` (must increase every upload) and `versionName` in `app/build.gradle.kts`.
-2. Run the checks:
+2. Run the checks (CI runs the first line on every push; the device tests are local only):
    ```bash
    ./gradlew :app:testDebugUnitTest :app:lintRelease
    ./gradlew :app:connectedDebugAndroidTest      # with a phone or emulator connected
@@ -58,3 +58,17 @@ To use the key on another computer, copy both files to the same places.
    stack traces from users back into readable code (Play Console accepts it as the
    deobfuscation file).
 6. Upload the `.aab` to a testing track first (internal testing), then promote.
+
+## GitHub release
+
+For people installing outside Play, attach APKs to a GitHub release:
+
+```bash
+./gradlew :app:assembleRelease -PtargetAbi=arm64-v8a   # most phones
+./gradlew :app:assembleRelease                          # universal: all four CPU types
+gh release create v1.2.0 --title "FlatDocScanner 1.2.0" --notes-file notes.md \
+    flatdocscanner-1.2.0-arm64.apk flatdocscanner-1.2.0-universal.apk
+```
+
+Both commands write `app/build/outputs/apk/release/app-release.apk`, so copy and rename the
+first before running the second. Wait for the CI run on `main` to pass before tagging.

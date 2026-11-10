@@ -1,64 +1,59 @@
 # FlatDocScanner
 
-An Android document and book scanner. Point your phone at a page and FlatDocScanner outlines it live, takes the photo by itself once you hold still, squares it up, cleans it and adds it to a multi-page document you can share as a PDF. Turn the page, and it captures the next one.
+An Android document and book scanner that works entirely on the phone. Point it at a page and it outlines the page live, takes the photo once you hold still, squares it up, cleans it and adds it to a multi-page folder you can share as a PDF. Turn the page and it captures the next one.
 
-**Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network. It also evens out the gutter shadow and removes fingers holding the pages down. Everything runs on the phone: no account, no upload. The app does not even have internet permission.
+**Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network.
+
+No account, no upload, no ads. The app does not have internet permission.
+
+## Install
+
+Download the latest APK from [Releases](https://github.com/ogshrug/FlatDocScanner/releases): `arm64` for almost every phone, `universal` if that one won't install. Needs Android 7.0 or later.
 
 ## Features
 
-- **Live page outline**: every preview frame is analysed, and the detected page is drawn over the camera view. The drawn outline glides between detections instead of jittering, and fades in and out as a page is found and lost
-- **Auto-capture** (on by default, toggle with **Auto / Manual**):
-  - fires once the page is large enough, sharp and held still for 0.7 s; the outline fills in as it counts down
-  - **page-turn detection**: after a capture it waits for the page to leave the view or the outline to jump, and refuses to capture content that matches the previous page, so you can scan a book just by turning pages
-  - auto-captured pages are cropped, filtered and saved in the background while you keep scanning; tap any page later to fine-tune it
-  - a status pill tells you what it needs: *Looking for a page*, *Move closer*, *Hold steady while it focuses*, *Hold still*, *Turn the page*
-- **Book mode** (toggle **Page / Book**): every photo of an open book becomes two pages
-  - **spine detection**: finds the gutter shadow row by row and fits a straight line through it, robust to pictures and text; falls back to the middle of the spread
-  - each half is flattened separately, because the model is trained on single pages
-  - **gutter shadow correction** lifts the dark band next to the spine to the paper level of the rest of the page and trims the fold line
-- **Curved-page flattening** with [UVDoc](https://github.com/tanguymagne/UVDoc) (MIT), running on-device with ONNX Runtime. The model predicts a 31×45 grid of where the flat page lies in the photo; the full-resolution photo is remapped through it, and the page's real proportions are estimated from the grid. Single pages without a clean 4-corner outline are treated as curved automatically, and the crop screen has a **Flat / Curved** switch.
-- **Finger removal**: finds skin-coloured blobs touching the page edge, judged against that page's own paper colour so cream or yellowed paper isn't mistaken for skin, and inpaints them. On by default; switch per page.
-- **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
-- **Camera toolbar**: labelled Page / Book, **Flash** (torch), **Timer** (a photo every 3 or 5 seconds, for turning pages at your own pace; pauses when the app is in the background) and Auto. Switching one on explains it in a short hint above the controls. The detected page is tinted, and an AUTO badge fills up while you hold still.
-- **Tap to focus, pinch to zoom** on the preview. The screen stays on while you scan.
-- **Camera capture** with CameraX, plus **import from gallery**
-- **Share photos to the app**: share one or more images from the gallery or any app (or "Open with"), and each is scanned into a new document
-- **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 2.4 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
-- **Manual corner adjustment**: drag any corner, with a magnifier that shows exactly where it sits. If the corners cross, the outline turns red and saving is blocked until they're fixed.
-- **Perspective correction** squares the page from its four corners
-- **Filters**:
-  - Original
-  - Color (CLAHE contrast boost on lightness only, so colours stay true)
-  - Grayscale
-  - Black & white (adaptive threshold for a crisp "scanned" look)
-- **Multi-page documents**: keep shooting page after page, then reorder by drag and drop, delete, or re-edit any page later. The original photo is kept, so re-cropping never loses quality.
-- **Share as PDF** using Android's built-in `PdfDocument` (no AGPL dependencies)
-- **Library of folders**: a grid of covers with page counts; new empty folders; search, sort (modified / created / name); select folders to make one PDF or ZIP, or move them to the Trash
-- **Folder screen**: bottom bar with Import, Text, Share, Create PDF and More (move pages to another folder, save to gallery, set as cover, crop, rotate left/right, delete); actions apply to the selected pages or the whole folder
-- **Create PDF**: file name with quick templates (folder name, date), page size (fit, A4, Letter), quality, colour (as scanned, grayscale, black & white) and page order
-- **Trash**: deleted folders and pages can be restored for 30 days, then they are deleted for good. Deleting happens at once with an **Undo** bar (pages return to their old place) instead of a confirmation dialog
-- **Settings**: save scans to gallery, vibrate, two-page order (left or right page first, for right-to-left books), interval timer length, start in the camera, text recognition language, storage used
-- **Grid or reader view**: pages as a grid, or as a continuous full-width scroll like an e-book
-- **Search**: finds words in the recognised text and marks them on the page images, in the document and in the full-screen viewer
-- **Rotate** a page a quarter turn (kept when the page is re-cropped)
-- **Full-screen viewer**: tap a page to open it; swipe for the next or previous page, pinch or double-tap to zoom. While zoomed, a swipe pans the page and only turns it once you reach the edge. Edit, share and delete from the top bar.
-- **Share as images**: the whole document, one page, or a selection. Hold a page (or use **Select pages**) to start selecting; hold and drag to reorder instead.
-- **Text recognition (OCR), opt-in**: nothing is recognised unless you ask, for one page (**Recognize text** in the viewer, with Copy, Share and Remove), a selection, or the whole document. Runs on-device with ML Kit Text Recognition v2; **Text language** switches between Latin and Devanagari (Hindi, Marathi, Nepali… plus Latin). Pages with text show "· Text" in the grid; re-cropping a page clears its text.
-- **Image | Text switch** in the page viewer, like a reader app
-- **Text view**: the recognised text full screen, a page per swipe, with copy, share and **read aloud** (Android text-to-speech; continues onto the next page)
-- **Text exports**: share the document as **TXT** or **Markdown** (paragraphs re-flowed, words hyphenated across lines re-joined). **Word (.docx)** with a page break between pages. **PDF** adds an invisible text layer on recognised pages, so it is searchable and its text can be copied. Page images can also be shared as a **ZIP**.
-- **Library** of all scans with cover thumbnails, rename and delete
-- Everything is on-device: no account and no network access
+### Scanning
+
+- **Live page outline** over the camera view, which glides between detections and fades as a page is found and lost.
+- **Auto-capture**: fires once the page is large enough, sharp and held still for 0.7 s. A status pill says what it needs (*Move closer*, *Hold still*, *Turn the page*…).
+- **Page-turn detection**: after a capture it waits for the page to change and refuses to capture the same content twice, so you can scan a book just by turning pages.
+- **Camera controls**: Page / Book, Flash, Timer (a photo every 3 or 5 seconds) and Auto, each explained by a short hint when switched on. Tap to focus, pinch to zoom; the screen stays on.
+- **Import** from the gallery, or share images to the app from anywhere.
+
+### Page clean-up
+
+- **Page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet-100). One hidden or folded corner is completed from the other three, and a classical edge-based detector is the fallback for captured photos. On the 130 real photos of the DocUNet benchmark it finds the right outline about 90% of the time.
+- **Manual corners**: drag any corner, with a magnifier. Crossed corners turn the outline red and block saving.
+- **Perspective correction** from the four corners.
+- **Curved-page flattening** with [UVDoc](https://github.com/tanguymagne/UVDoc). Pages without a clean four-corner outline are treated as curved automatically; the crop screen has a Flat / Curved switch.
+- **Book mode**: spine detection, a separate flatten for each half, and gutter shadow correction.
+- **Finger removal**: skin-coloured blobs touching the page edge are inpainted, judged against that page's own paper colour.
+- **Filters**: Original, Color (contrast boost on lightness only), Grayscale, Black & white (adaptive threshold).
+
+### Library
+
+- **Folders** with covers and page counts; search, sort, select several to make one PDF or ZIP.
+- **Pages**: grid or continuous reader view, drag to reorder, rotate, re-crop from the kept original photo, move between folders, set as cover, save to gallery.
+- **Full-screen viewer**: swipe between pages, pinch or double-tap to zoom.
+- **Trash**: deleted folders and pages can be restored for 30 days. Deleting happens at once with an Undo bar; pages return to their old place.
+- **Settings**: save scans to gallery, vibrate, two-page order (for right-to-left books), timer length, start in the camera, text language, storage used.
+
+### Text and export
+
+- **Text recognition, opt-in**: per page, selection or folder, on-device with ML Kit (Latin and Devanagari). Nothing is recognised unless you ask.
+- **Search** finds words in recognised text and marks them on the page images.
+- **Text view** with copy, share and read aloud.
+- **Exports**: PDF (page size, quality, colour and order options; searchable text layer on recognised pages), images, ZIP, TXT, Markdown and Word (.docx).
 
 ## How it works
 
-Live capture (about 640×480, every frame):
+Live preview, every frame at about 640×480:
 
 ```
-CameraX ImageAnalysis (Y plane = grayscale, rotated upright)
+CameraX ImageAnalysis (RGBA, turned upright)
       │
       ▼
-FrameAnalyzer ── PageDetector outline + sharpness + 24×32 page signature
+FrameAnalyzer ── corner model outline + sharpness + 24×32 page signature
       │
       ▼
 AutoCapture ── state machine: TOO_SMALL / BLURRY / HOLD_STILL → CAPTURE → TURN_PAGE
@@ -67,41 +62,65 @@ AutoCapture ── state machine: TOO_SMALL / BLURRY / HOLD_STILL → CAPTURE �
 ImageCapture (full resolution) → ScanPipeline → saved page
 ```
 
-Book spread (Book mode):
+A flat page:
 
 ```
-Photo → PageDetector (loose: curved outlines allowed) → SpineDetector
-      → for each side: ImageProcessor.halfPage (other page painted out)
-      → Dewarper (UVDoc, ONNX Runtime) → correctGutter → FingerRemover → filter
+Photo → PageDetector (corner model, then classical fallback) → corners confirmed or adjusted
+      → perspective warp → finger removal → filter → rotation
+      → ScanRepository (Room + JPEG files in app storage)
 ```
 
-Flat page, per photo (auto-captured, or after a manual shot in the crop screen):
+A book spread:
 
 ```
-Camera / gallery
-      │
-      ▼
-PageDetector ── grayscale → blur → auto-threshold Canny → dilate → contours
-      │          → largest convex 4-point polygon (Otsu-threshold fallback)
-      ▼
-CornerEditView ── user confirms or adjusts the corners
-      │
-      ▼
-ImageProcessor.warp ── perspective transform to a flat rectangle
-      │
-      ▼
-ImageProcessor.applyFilter ── Original / Color / Grayscale / B&W
-      │
-      ▼
-ScanRepository ── Room (documents, pages) + JPEG files in app storage
-      │
-      ▼
-PdfExporter ── multi-page PDF → Android share sheet
+Photo → PageDetector (curved outlines allowed) → SpineDetector
+      → for each side: other page painted out → Dewarper (UVDoc) → gutter correction
+      → finger removal → filter
 ```
 
-Corners are stored as fractions of the image size, so a page can be re-cropped from its original photo at any time.
+Corners are stored as fractions of the image size and the original photo is kept, so a page can be re-cropped at any time without losing quality.
 
-## Project structure
+## Building
+
+Requirements: Android Studio with JDK 17 or later (the bundled runtime works), Android SDK platform 37, and a device or emulator on Android 7.0 (API 24) or later.
+
+```bash
+./gradlew :app:assembleDebug               # debug APK
+./gradlew :app:installDebug                # install on a connected device
+./gradlew :app:testDebugUnitTest           # unit tests: geometry, auto-capture, spine fit, gutter gains, text export
+./gradlew :app:lintDebug                   # Android lint
+./gradlew :app:connectedDebugAndroidTest   # on a device: detection, both models, OCR, PDF
+```
+
+- Add `-PtargetAbi=arm64-v8a` (or `x86_64` for an emulator) to package one CPU type. Without it the APK carries native libraries for all four and is about 350 MB.
+- Debug builds use the package `io.github.ogshrug.flatdocscanner.debug`, so they install beside the release app.
+- Every push runs the unit tests, lint and a debug build on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
+- Release builds are shrunk with R8 and signed with a key kept outside git; see [RELEASING.md](RELEASING.md).
+
+To regenerate the flattening model:
+
+```bash
+git clone https://github.com/tanguymagne/UVDoc
+python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out uvdoc_full.onnx   # needs torch, onnx, onnxruntime
+python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
+```
+
+## Tech stack
+
+| Area | Library |
+|---|---|
+| Language / UI | Kotlin, Android Views, Material 3 |
+| Camera | CameraX 1.6 |
+| Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
+| Page detection | DocAligner LCNet-100 via ONNX Runtime, OpenCV fallback |
+| Curved pages | UVDoc via ONNX Runtime 1.30 |
+| Text recognition | ML Kit Text Recognition v2 (Latin + Devanagari, bundled, offline) |
+| Storage | Room 2.8 (KSP) |
+| PDF | `android.graphics.pdf.PdfDocument` |
+| Build | AGP 9.4, Gradle 9.6, version catalog |
+
+<details>
+<summary><b>Project structure</b></summary>
 
 ```
 app/src/main/java/io/github/ogshrug/flatdocscanner/
@@ -156,94 +175,39 @@ tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTo
 tools/halve_model.py             Stores a model's weights as 16-bit floats (half the file, same computation)
 ```
 
-## Tech stack
+</details>
 
-| Area | Library |
-|---|---|
-| Language / UI | Kotlin, Android Views, Material 3 |
-| Camera | CameraX 1.6 |
-| Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
-| Page detection | DocAligner LCNet-100 via ONNX Runtime, OpenCV fallback |
-| Curved pages | UVDoc via ONNX Runtime 1.30 |
-| Text recognition | ML Kit Text Recognition v2 (Latin + Devanagari, bundled, offline) |
-| Storage | Room 2.8 (KSP) |
-| PDF | `android.graphics.pdf.PdfDocument` |
-| Build | AGP 9.4, Gradle 9.6, version catalog |
+## Developer notes
 
-## Building
+**Performance**
 
-Requirements:
+- Camera frames are read in place from native memory, and the corner model reuses its buffers, so the analyser allocates almost nothing per frame.
+- Both models are memory-mapped from the APK. The corner model loads in the background at app start; the flattening model loads ahead of time when Book mode is on.
+- Model weights are stored as 16-bit floats and widened at load, which halves both files (31.6 → 15.8 MB and 4.8 → 2.4 MB). The largest change in either model's output on test images was 0.001.
+- Convolutions run on ONNX Runtime's XNNPACK provider, with the default CPU path as a fallback.
+- Finishing steps that don't apply to a page (gutter, fingers, filter, rotation) are skipped.
+- Grids update by diff; thumbnail loads for views that scroll away are cancelled, and at most four run at once.
+- `SpeedDeviceTest` times detection, finishing and flattening on a connected device (logcat tag `SPEED`); debug builds also log per-frame camera timings under `FrameAnalyzer`.
 
-- Android Studio with a JDK 17+ (the bundled JetBrains Runtime works)
-- Android SDK platform 37
-- A device or emulator on Android 7.0 (API 24) or later
+**Tuning.** The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books. The same goes for the spine valley depth in `SpineDetector`, the skin margins in `FingerRemover` and the gutter zone in `Gutter`.
 
-```bash
-./gradlew :app:assembleDebug        # build the debug APK
-./gradlew :app:installDebug         # install on a connected device
-./gradlew :app:testDebugUnitTest    # unit tests (geometry, auto-capture, spine fit, gutter gains, text export)
-./gradlew :app:lintDebug            # Android lint
-./gradlew :app:connectedDebugAndroidTest   # on a device/emulator: detection, both models, OCR, PDF
-```
-
-Debug builds use the package `io.github.ogshrug.flatdocscanner.debug`, so they install beside the release app rather than being refused for their different signature. `SpeedDeviceTest` times detection, finishing and flattening on the connected device and writes the results to logcat under the tag `SPEED`; debug builds also log per-frame camera timings under `FrameAnalyzer`. Every push runs the unit tests, lint and a debug build on GitHub Actions (`.github/workflows/ci.yml`).
-
-The debug APK bundles OpenCV's and ONNX Runtime's native libraries for all four CPU architectures, so it is large (~330 MB). Publish through an Android App Bundle (`bundleRelease`) so that each device downloads only its own architecture; the two models add 18 MB.
-
-To regenerate the model:
-
-```bash
-git clone https://github.com/tanguymagne/UVDoc
-python tools/export_uvdoc_onnx.py --uvdoc UVDoc --out uvdoc_full.onnx   # needs torch, onnx, onnxruntime
-python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
-```
-
-## Roadmap
-
-- [x] **Phase 1: Flat scanner MVP**: capture, detection, manual corners, perspective correction, filters, multi-page documents, PDF export
-- [x] **Phase 2: Real-time capture**: live outline, focus scoring, stability-based auto-capture, page-turn detection for continuous book scanning
-- [x] **Phase 3: Book pages**: spine detection and split, on-device curved-page flattening (UVDoc), gutter shadow correction, finger removal
-- [x] **Phase 4: Text (on-device)**: opt-in OCR per page or document (ML Kit, Latin and Devanagari), searchable PDFs, TXT/Markdown export
-- [ ] **Phase 4b: Structured text (cloud)**: optional server-side parsing for tables and formulas, more scripts
-- [ ] **Phase 5: Hardening**: offline queueing, low-end device performance, more export formats
+**Design.** Dark only: near-black surfaces with a faint teal cast and one teal accent (`#2DD4BF`), defined in `res/values/colors.xml`. The accent is kept for the main action, selection and the "ready" page outline.
 
 ## Privacy
 
-- No account, no analytics, no ads, no servers. The app has **no internet permission**: ML Kit's network permissions (used only for Google usage statistics) are removed in the manifest, so nothing can leave the device.
-- Scans are stored in app-private storage. Android cloud backup includes settings only; device-to-device transfer (new phone setup) includes scans.
-- Full policy: [PRIVACY.md](PRIVACY.md).
+No account, analytics, ads or servers. The app has no internet permission: ML Kit's network permissions are removed in the manifest, so nothing can leave the device. Scans live in app-private storage; Android cloud backup includes settings only. Full policy: [PRIVACY.md](PRIVACY.md).
 
-## Release builds
+## Roadmap
 
-Release builds are shrunk with R8 and signed with an upload key kept outside git. See [RELEASING.md](RELEASING.md) for the key, the Play Console setup (Data safety answers, listing) and the per-release checklist; the store listing draft is in [docs/store-listing.md](docs/store-listing.md).
+- [x] Flat scanner: capture, detection, manual corners, perspective correction, filters, PDF export
+- [x] Real-time capture: live outline, focus scoring, auto-capture, page-turn detection
+- [x] Book pages: spine split, curved-page flattening, gutter correction, finger removal
+- [x] On-device text: opt-in OCR, searchable PDFs, TXT / Markdown / Word export
+- [ ] Structured text: tables and formulas, more scripts
+- [ ] Hardening: low-end device performance, more export formats
 
-```bash
-./gradlew :app:bundleRelease     # Play upload: app/build/outputs/bundle/release/app-release.aab
-./gradlew :app:assembleRelease   # installable APK for testing the shrunk build
-```
+## License
 
-## Performance notes
+FlatDocScanner is licensed under the [Apache License 2.0](LICENSE).
 
-- **Live preview**: camera frames are read in place from native memory (no per-frame copies into the Java heap), and the corner model reuses its input and output buffers, so the analyser allocates almost nothing per frame.
-- **Models**: both `.onnx` files are memory-mapped from the APK rather than read into byte arrays, and the corner model is loaded in the background at app start so the camera's first frame isn't held up. The flattening model is loaded ahead of time when Book mode is on. Their weights are stored as 16-bit floats and widened when the model loads, which halves both files (31.6 → 15.8 MB and 4.8 → 2.4 MB); the largest change in either model's output on test images was 0.001, and speed is unchanged. Convolutions run on ONNX Runtime's XNNPACK provider, about a tenth faster than its default kernels on a Helio G96 phone, with the default path as a fallback.
-- **Saving a page**: finishing steps that don't apply (gutter, fingers, filter, rotation) are skipped instead of copying the page through.
-- **Lists**: the library and folder grids update by diff, thumbnails for views that scroll away are cancelled, and at most four are decoded at once.
-
-## Design
-
-Dark only: near-black surfaces with a faint teal cast and a single teal accent (`#2DD4BF`), defined in `res/values/colors.xml`. The accent is kept for the main action, selection and the "ready" page outline.
-
-## Tuning
-
-The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books. The same goes for the spine valley depth in `SpineDetector`, the skin margins in `FingerRemover`, and the gutter zone in `Gutter`.
-
-## Third-party licenses
-
-- [DocAligner](https://github.com/DocsaidLab/DocAligner) model weights: Apache-2.0, DocsaidLab (license shipped in `assets/docaligner_LICENSE.txt`)
-- [UVDoc](https://github.com/tanguymagne/UVDoc) model weights: MIT, © 2023 Tanguy Magne (notice shipped in `assets/uvdoc_LICENSE.txt`)
-- [ONNX Runtime](https://github.com/microsoft/onnxruntime): MIT
-
-- [OpenCV](https://opencv.org/license/): Apache 2.0
-- [AndroidX](https://developer.android.com/jetpack/androidx) (CameraX, Room, AppCompat, RecyclerView…): Apache 2.0
-- [Material Components for Android](https://github.com/material-components/material-components-android): Apache 2.0
-- [Kotlin coroutines](https://github.com/Kotlin/kotlinx.coroutines): Apache 2.0
+It bundles the UVDoc model (MIT, © 2023 Tanguy Magne), the DocAligner model (Apache 2.0, DocsaidLab), OpenCV (Apache 2.0), ONNX Runtime (MIT) and other libraries under their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -279,5 +279,16 @@
     <string name="settings_about">About</string>
     <string name="settings_version">Version</string>
     <string name="settings_licenses">Open source licences</string>
-    <string name="licenses_body">FlatDocScanner uses these open source projects:\n\n• UVDoc model (curved pages) — MIT, © 2023 Tanguy Magne\n• DocAligner model (page corners) — Apache 2.0, DocsaidLab\n• OpenCV — Apache 2.0\n• ONNX Runtime — MIT, Microsoft\n• ML Kit Text Recognition — Google\n• AndroidX, Material Components — Apache 2.0\n• Kotlin coroutines — Apache 2.0</string>
+    <string name="licenses_body">FlatDocScanner is licensed under the Apache License 2.0. It uses:
+
+• UVDoc model (curved pages) — MIT, © 2023 Tanguy Magne; converted to ONNX, weights stored at half precision
+• DocAligner model (page corners) — Apache 2.0, DocsaidLab; weights stored at half precision
+• OpenCV — Apache 2.0
+• ONNX Runtime — MIT, © Microsoft Corporation
+• XNNPACK — BSD 3-Clause, © Facebook, Inc. and Google LLC
+• ML Kit Text Recognition — Google, ML Kit Terms of Service
+• AndroidX, Material Components — Apache 2.0
+• Kotlin, Kotlin coroutines — Apache 2.0
+
+Full notices: THIRD_PARTY_NOTICES.md in the project repository.</string>
 </resources>
