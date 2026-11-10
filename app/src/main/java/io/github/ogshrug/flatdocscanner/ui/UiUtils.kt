@@ -1,5 +1,6 @@
 package io.github.ogshrug.flatdocscanner.ui
 
+import android.animation.ObjectAnimator
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.util.LruCache
@@ -13,9 +14,11 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
+import io.github.ogshrug.flatdocscanner.R
 import io.github.ogshrug.flatdocscanner.util.Bitmaps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -30,6 +33,9 @@ fun ComponentActivity.enableDarkEdgeToEdge() {
         navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
     )
 }
+
+/** How long an Undo bar stays up: long enough to read it and reach the button. */
+const val UNDO_MILLIS = 6000
 
 /** Keeps a floating button above the navigation bar by adding the bar's height to its margin. */
 fun View.liftAboveNavigationBar() {
@@ -79,7 +85,7 @@ fun androidx.appcompat.app.AppCompatActivity.promptText(
     com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
         .setTitle(title)
         .setView(container)
-        .setNegativeButton(io.github.ogshrug.flatdocscanner.R.string.action_cancel, null)
+        .setNegativeButton(R.string.action_cancel, null)
         .setPositiveButton(positive) { _, _ ->
             input.text.toString().trim().takeIf { it.isNotEmpty() }?.let(onDone)
         }
@@ -87,27 +93,52 @@ fun androidx.appcompat.app.AppCompatActivity.promptText(
     input.requestFocus()
 }
 
-/** Small decoded-thumbnail cache for list and grid items. Keys are file paths, which change on every re-save. */
+/**
+ * Small decoded-thumbnail cache for list and grid items. Page files get a new path on every
+ * re-save, so a path never goes stale; the size is part of the key because the same page is
+ * shown small in the grid and large in the reader view.
+ */
 object Thumbnails {
     private val cache = object : LruCache<String, Bitmap>((Runtime.getRuntime().maxMemory() / 8 / 1024).toInt()) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount / 1024
     }
 
+    /** A few decodes at a time: more only makes them all slower and starves the rest of the app. */
+    private val decoder = Dispatchers.IO.limitedParallelism(4)
+
+    /** What a view is still waiting for, so a recycled view can drop it. */
+    private class Pending(val job: Job, var fade: ObjectAnimator? = null)
+
     fun load(view: ImageView, path: String?, maxDim: Int, scope: CoroutineScope) {
+        // The view was scrolled away or given another image: forget the old request. Decodes
+        // that haven't started yet are skipped, which keeps a fast fling smooth.
+        (view.getTag(R.id.thumbnail_pending) as? Pending)?.let {
+            it.job.cancel()
+            it.fade?.cancel()
+        }
+        view.setTag(R.id.thumbnail_pending, null)
+        view.imageAlpha = 255
         view.tag = path
         if (path == null) {
             view.setImageDrawable(null)
             return
         }
-        cache.get(path)?.let {
+        val key = "$path@$maxDim"
+        cache.get(key)?.let {
             view.setImageBitmap(it)
             return
         }
         view.setImageDrawable(null)
-        scope.launch {
-            val bmp = withContext(Dispatchers.IO) { Bitmaps.decode(File(path), maxDim) } ?: return@launch
-            cache.put(path, bmp)
-            if (view.tag == path) view.setImageBitmap(bmp)
+        val job = scope.launch {
+            val bmp = withContext(decoder) { Bitmaps.decode(File(path), maxDim) } ?: return@launch
+            cache.put(key, bmp)
+            if (view.tag != path) return@launch
+            view.setImageBitmap(bmp)
+            // Fade the picture in over its placeholder instead of popping.
+            val fade = ObjectAnimator.ofInt(view, "imageAlpha", 0, 255).setDuration(140)
+            (view.getTag(R.id.thumbnail_pending) as? Pending)?.fade = fade
+            fade.start()
         }
+        view.setTag(R.id.thumbnail_pending, Pending(job))
     }
 }

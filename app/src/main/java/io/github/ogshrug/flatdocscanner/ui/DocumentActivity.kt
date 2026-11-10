@@ -28,6 +28,7 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -42,6 +43,7 @@ import io.github.ogshrug.flatdocscanner.export.GalleryExporter
 import io.github.ogshrug.flatdocscanner.ocr.PageTextCodec
 import io.github.ogshrug.flatdocscanner.repository
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -88,7 +90,7 @@ class DocumentActivity : AppCompatActivity() {
         binding = ActivityDocumentBinding.inflate(layoutInflater)
         setContentView(binding.root)
         onBackPressedDispatcher.addCallback(this, exitSelection)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.bottom) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.actionBar) { v, insets ->
             v.updatePadding(bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom)
             insets
         }
@@ -333,7 +335,7 @@ class DocumentActivity : AppCompatActivity() {
             ActionSheet.Action(R.drawable.ic_rotate_left, R.string.action_rotate_left) { rotate(-90) },
             ActionSheet.Action(R.drawable.ic_rotate_right, R.string.action_rotate_right) { rotate(90) },
             ActionSheet.Action(R.drawable.ic_delete, R.string.action_delete, destructive = true) {
-                selectedOrHint()?.let(::confirmTrash)
+                selectedOrHint()?.let(::moveToTrash)
             },
         ))
     }
@@ -393,18 +395,26 @@ class DocumentActivity : AppCompatActivity() {
         }
     }
 
-    private fun confirmTrash(pages: List<PageEntity>) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(resources.getQuantityString(R.plurals.move_pages_to_trash, pages.size, pages.size))
-            .setMessage(R.string.trash_body)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
-                lifecycleScope.launch {
-                    setSelecting(false)
-                    pages.forEach { repository.deletePage(it) }
+    /**
+     * Nothing is lost by this (the Trash keeps pages for 30 days), so it happens straight away
+     * and offers Undo, which puts the pages back exactly where they were.
+     */
+    private fun moveToTrash(pages: List<PageEntity>) {
+        val orderBefore = adapter.allPages.map { it.id }
+        lifecycleScope.launch {
+            setSelecting(false)
+            repository.deletePages(pages)
+            Snackbar.make(
+                binding.root,
+                resources.getQuantityString(R.plurals.pages_moved_to_trash, pages.size, pages.size),
+                UNDO_MILLIS,
+            )
+                .setAnchorView(binding.addPageButton)
+                .setAction(R.string.action_undo) {
+                    lifecycleScope.launch { repository.undoDeletePages(documentId, pages, orderBefore) }
                 }
-            }
-            .show()
+                .show()
+        }
     }
 
     private fun confirmDeleteFolder() {
@@ -470,17 +480,45 @@ class DocumentActivity : AppCompatActivity() {
         inner class Holder(val b: ViewBinding, val image: HighlightImageView, val number: TextView, val check: ImageView) :
             RecyclerView.ViewHolder(b.root)
 
+        /** Page number each shown page was last given, to spot pages that only need renumbering. */
+        private var numbers: Map<Long, Int> = emptyMap()
+
+        /**
+         * Only pages that changed are rebound, and the rest slide into place: adding, rotating
+         * or deleting a page no longer redraws (and flickers) the whole grid.
+         */
         fun submit(list: List<PageEntity>) {
             allPages.clear()
             allPages.addAll(list)
             selected.retainAll(list.map { it.id }.toSet())
-            refilter()
+
+            val old = pages.toList()
+            val oldNumbers = numbers
+            val new = filtered()
+            val newNumbers = HashMap<Long, Int>(list.size).also { m -> list.forEachIndexed { i, p -> m[p.id] = i + 1 } }
+            val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+                override fun getOldListSize() = old.size
+                override fun getNewListSize() = new.size
+                override fun areItemsTheSame(o: Int, n: Int) = old[o].id == new[n].id
+                override fun areContentsTheSame(o: Int, n: Int) =
+                    old[o] == new[n] && oldNumbers[old[o].id] == newNumbers[new[n].id]
+                // Rebind in place instead of cross-fading two copies of the page.
+                override fun getChangePayload(o: Int, n: Int): Any = Unit
+            })
+            pages.clear()
+            pages.addAll(new)
+            numbers = newNumbers
+            diff.dispatchUpdatesTo(this)
             if (selecting) updateSelection()
         }
 
+        private fun filtered() = if (query.isEmpty()) allPages.toList() else allPages.filter { matches(it).isNotEmpty() }
+
+        /** Redraws everything: the search changed, so every page's marks may have. */
         fun refilter() {
             pages.clear()
-            pages.addAll(if (query.isEmpty()) allPages else allPages.filter { matches(it).isNotEmpty() })
+            pages.addAll(filtered())
+            numbers = HashMap<Long, Int>().also { m -> allPages.forEachIndexed { i, p -> m[p.id] = i + 1 } }
             @Suppress("NotifyDataSetChanged")
             notifyDataSetChanged()
         }
@@ -593,6 +631,8 @@ class DocumentActivity : AppCompatActivity() {
                 repository.reorder(documentId, order)
                 dragging = false
                 adapter.submit(repository.getPages(documentId))
+                // Every page between the old and the new place has a new number.
+                adapter.notifyItemRangeChanged(0, adapter.itemCount, Unit)
             }
         }
     }

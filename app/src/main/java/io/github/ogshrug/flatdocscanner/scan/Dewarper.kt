@@ -32,15 +32,22 @@ object Dewarper {
     private lateinit var appContext: Context
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
     private val session: OrtSession by lazy {
-        val bytes = appContext.assets.open(MODEL_ASSET).use { it.readBytes() }
         val options = OrtSession.SessionOptions().apply {
             setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
         }
-        env.createSession(bytes, options)
+        env.createSession(ModelAssets.map(appContext, MODEL_ASSET), options)
     }
 
     fun init(context: Context) {
         appContext = context.applicationContext
+    }
+
+    /**
+     * Loads the model now (call off the main thread), so the first curved page or book spread
+     * doesn't also pay for parsing 31 MB of weights.
+     */
+    fun warmUp() {
+        runCatching { session }
     }
 
     /** Flattens the page in [photo]. The output keeps the page's own proportions, long side [maxDim]. */

@@ -1,29 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Palette (dark only). Sampled from the design reference. -->
-    <color name="background">#FF181818</color>
-    <color name="surface_lowest">#FF121212</color>
-    <color name="surface_low">#FF1C1C1C</color>
-    <color name="surface">#FF1F1F1F</color>
-    <color name="surface_high">#FF232323</color>
-    <color name="surface_highest">#FF2A2A2A</color>
-    <color name="divider">#FF232323</color>
-    <color name="outline">#FF3A3A3A</color>
+    <!--
+        Palette (dark only): near-black surfaces with a faint teal cast, and one teal accent.
+        Surfaces step up in lightness with elevation; the accent is kept for the main action,
+        selection and the "ready" page outline, so it always means "this is live".
+    -->
+    <color name="background">#FF080B0C</color>
+    <color name="surface_lowest">#FF040606</color>
+    <color name="surface_low">#FF0E1314</color>
+    <color name="surface">#FF12191A</color>
+    <color name="surface_high">#FF182122</color>
+    <color name="surface_highest">#FF202B2C</color>
+    <color name="divider">#FF1A2425</color>
+    <color name="outline">#FF33474A</color>
 
-    <color name="text_primary">#FFFFFFFF</color>
-    <color name="text_secondary">#FFA6A6A6</color>
-    <color name="text_muted">#FF525252</color>
+    <color name="text_primary">#FFF2F7F7</color>
+    <color name="text_secondary">#FF9BADAF</color>
+    <color name="text_muted">#FF55676A</color>
 
     <!-- Highlight: buttons, selection, the "ready" page outline. -->
-    <color name="accent">#FFCEFF3E</color>
-    <color name="on_accent">#FF181818</color>
-    <color name="accent_container">#FF2C3511</color>
-    <color name="on_accent_container">#FFCEFF3E</color>
+    <color name="accent">#FF2DD4BF</color>
+    <color name="accent_bright">#FF5EEAD4</color>
+    <color name="on_accent">#FF00201C</color>
+    <color name="accent_container">#FF0C3A35</color>
+    <color name="on_accent_container">#FF8FF3E4</color>
 
-    <color name="error">#FFFF6B5E</color>
-    <color name="on_error">#FF181818</color>
+    <color name="error">#FFFF7A70</color>
+    <color name="on_error">#FF2B0705</color>
 
-    <color name="scrim">#99000000</color>
+    <color name="scrim">#B3040606</color>
+    <color name="scrim_strong">#D9080B0C</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

@@ -242,7 +242,7 @@ class PageViewerActivity : AppCompatActivity() {
             .setTitle(getString(R.string.delete_page_title, number))
             .setMessage(if (last) R.string.delete_page_last_body else R.string.delete_page_body)
             .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_delete) { _, _ ->
+            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
                 lifecycleScope.launch { repository.deletePage(page) }
             }
             .show()

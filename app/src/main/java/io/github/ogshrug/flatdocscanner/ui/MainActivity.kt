@@ -20,6 +20,7 @@ import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import io.github.ogshrug.flatdocscanner.AppSettings
@@ -33,6 +34,7 @@ import io.github.ogshrug.flatdocscanner.export.PdfOptions
 import io.github.ogshrug.flatdocscanner.repository
 import io.github.ogshrug.flatdocscanner.settings
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -64,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         onBackPressedDispatcher.addCallback(this, exitSelection)
-        ViewCompat.setOnApplyWindowInsetsListener(binding.bottom) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.actionBar) { v, insets ->
             v.updatePadding(bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom)
             insets
         }
@@ -81,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.actionPdf.setOnClickListener { withSelection { createPdf(it) } }
         binding.actionZip.setOnClickListener { withSelection { createZip(it) } }
-        binding.actionDelete.setOnClickListener { withSelection { confirmTrash(it) } }
+        binding.actionDelete.setOnClickListener { withSelection { moveToTrash(it) } }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -122,7 +124,7 @@ class MainActivity : AppCompatActivity() {
         val shown = if (query.isEmpty()) sorted else sorted.filter { it.title.contains(query, ignoreCase = true) }
         adapter.submit(shown, showNewFolder = query.isEmpty() && !selecting)
         binding.empty.isVisible = all.isEmpty()
-        if (selecting) updateSelection()
+        if (selecting) updateSelection() else adapter.refreshChecks()
     }
 
     private fun setUpSearch() {
@@ -221,18 +223,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun confirmTrash(docs: List<DocumentSummary>) {
-        MaterialAlertDialogBuilder(this)
-            .setTitle(resources.getQuantityString(R.plurals.move_folders_to_trash, docs.size, docs.size))
-            .setMessage(R.string.trash_body)
-            .setNegativeButton(R.string.action_cancel, null)
-            .setPositiveButton(R.string.action_move_to_trash) { _, _ ->
-                lifecycleScope.launch {
-                    docs.forEach { repository.deleteDocument(it.id) }
-                    setSelecting(false)
+    /**
+     * Nothing is lost by this (the Trash keeps folders for 30 days), so it happens straight away
+     * and offers Undo, rather than stopping to ask first.
+     */
+    private fun moveToTrash(docs: List<DocumentSummary>) {
+        lifecycleScope.launch {
+            docs.forEach { repository.deleteDocument(it.id) }
+            setSelecting(false)
+            Snackbar.make(
+                binding.root,
+                resources.getQuantityString(R.plurals.folders_moved_to_trash, docs.size, docs.size),
+                UNDO_MILLIS,
+            )
+                .setAnchorView(binding.scanButton)
+                .setAction(R.string.action_undo) {
+                    lifecycleScope.launch { docs.forEach { repository.restoreDocument(it.id) } }
                 }
-            }
-            .show()
+                .show()
+        }
     }
 
     /** Hands picked photos to [ImportActivity], which scans them into a new folder. */
@@ -261,11 +270,30 @@ class MainActivity : AppCompatActivity() {
         inner class FolderHolder(val b: ItemFolderBinding) : RecyclerView.ViewHolder(b.root)
         inner class NewHolder(val b: ItemNewFolderBinding) : RecyclerView.ViewHolder(b.root)
 
+        /**
+         * Only what changed is rebound, and folders slide into their new places: a scan landing
+         * in the library or a re-sort no longer redraws (and flickers) every cover.
+         */
         fun submit(list: List<DocumentSummary>, showNewFolder: Boolean) {
+            val old = items
+            val oldOffset = offset()
+            val newOffset = if (showNewFolder) 1 else 0
+            val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+                override fun getOldListSize() = old.size + oldOffset
+                override fun getNewListSize() = list.size + newOffset
+                override fun areItemsTheSame(o: Int, n: Int): Boolean {
+                    val a = old.getOrNull(o - oldOffset)
+                    val b = list.getOrNull(n - newOffset)
+                    return if (a == null || b == null) a == null && b == null else a.id == b.id
+                }
+                override fun areContentsTheSame(o: Int, n: Int) =
+                    old.getOrNull(o - oldOffset) == list.getOrNull(n - newOffset)
+                // Rebind in place instead of cross-fading two copies of the tile.
+                override fun getChangePayload(o: Int, n: Int): Any = Unit
+            })
             items = list
             newFolderTile = showNewFolder
-            @Suppress("NotifyDataSetChanged")
-            notifyDataSetChanged()
+            diff.dispatchUpdatesTo(this)
         }
 
         private fun offset() = if (newFolderTile) 1 else 0
@@ -283,7 +311,10 @@ class MainActivity : AppCompatActivity() {
                     h.b.root.setOnClickListener { newFolder() }
                 }
             } else {
-                FolderHolder(ItemFolderBinding.inflate(inflater, parent, false)).also { it.b.cover.aspect = COVER_ASPECT }
+                FolderHolder(ItemFolderBinding.inflate(inflater, parent, false)).also {
+                    it.b.cover.aspect = COVER_ASPECT
+                    it.b.cover.clipToOutline = true
+                }
             }
         }
 
@@ -320,18 +351,23 @@ class MainActivity : AppCompatActivity() {
             b.check.imageTintList = if (on) getColorStateList(R.color.accent) else null
         }
 
-        /** Updates the ticks on visible folders without rebinding the covers. */
-        fun refreshChecks() {
-            for (i in 0 until binding.list.childCount) {
-                val h = binding.list.getChildViewHolder(binding.list.getChildAt(i)) as? FolderHolder ?: continue
-                val pos = h.bindingAdapterPosition - offset()
-                items.getOrNull(pos)?.let { bindCheck(h.b, it) }
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
+            if (holder is FolderHolder && payloads.contains(CHECK_ONLY)) {
+                items.getOrNull(position - offset())?.let { bindCheck(holder.b, it) }
+            } else {
+                super.onBindViewHolder(holder, position, payloads)
             }
         }
+
+        /** Updates the ticks without rebinding the covers. */
+        fun refreshChecks() = notifyItemRangeChanged(0, itemCount, CHECK_ONLY)
     }
 
     private companion object {
         /** Folder covers are shown at 3:4. */
         const val COVER_ASPECT = 4f / 3f
+
+        /** Bind payload: only the selection tick changed. */
+        val CHECK_ONLY = Any()
     }
 }

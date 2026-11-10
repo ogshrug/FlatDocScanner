@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- View tag: the thumbnail a list item is still waiting for. -->
+    <item name="thumbnail_pending" type="id" />
+</resources>

@@ -16,6 +16,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <!-- Shown where the preview was tapped to focus. -->
+    <View
+        android:id="@+id/focusRing"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:alpha="0"
+        android:background="@drawable/focus_ring"
+        android:importantForAccessibility="no" />
+
     <!-- Auto-capture countdown, and the interval timer's seconds. -->
     <FrameLayout
         android:id="@+id/autoBadge"
@@ -35,6 +44,7 @@
             app:indicatorInset="6dp"
             app:indicatorSize="84dp"
             app:trackColor="#33FFFFFF"
+            app:trackCornerRadius="2dp"
             app:trackThickness="4dp" />
 
         <TextView
@@ -59,8 +69,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
+        android:background="@drawable/bg_camera_top"
         android:orientation="vertical"
-        android:padding="8dp">
+        android:paddingHorizontal="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="20dp">
 
         <FrameLayout
             android:layout_width="match_parent"
@@ -82,6 +95,20 @@
                 android:layout_gravity="center"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 android:textColor="@android:color/white" />
+
+            <TextView
+                android:id="@+id/zoomLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="8dp"
+                android:alpha="0"
+                android:background="@drawable/bg_status_pill"
+                android:importantForAccessibility="no"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:textAppearance="?attr/textAppearanceLabelLarge"
+                android:textColor="@color/accent" />
         </FrameLayout>
 
         <TextView
@@ -94,6 +121,7 @@
             android:background="@drawable/bg_status_pill"
             android:paddingHorizontal="16dp"
             android:paddingVertical="6dp"
+            android:text="@string/status_no_page"
             android:textAppearance="?attr/textAppearanceLabelLarge"
             android:textColor="@android:color/white" />
     </LinearLayout>
@@ -103,10 +131,28 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@color/scrim"
+        android:background="@drawable/bg_camera_controls"
         android:orientation="vertical"
-        android:paddingTop="8dp"
+        android:paddingTop="28dp"
         android:paddingBottom="16dp">
+
+        <!-- What a setting does, said once when it is switched on; replaces system toasts. -->
+        <TextView
+            android:id="@+id/hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginBottom="8dp"
+            android:accessibilityLiveRegion="polite"
+            android:alpha="0"
+            android:background="@drawable/bg_hint"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="10dp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="@color/text_primary"
+            android:visibility="invisible" />
 
         <!-- Capture options: page/book, flash, interval timer, auto. -->
         <LinearLayout
@@ -115,52 +161,39 @@
             android:gravity="center"
             android:orientation="horizontal">
 
-            <ImageButton
+            <TextView
                 android:id="@+id/bookButton"
                 style="@style/Widget.DocScanner.CameraOption"
                 android:contentDescription="@string/book_off_description"
-                android:src="@drawable/ic_page" />
+                android:text="@string/option_page"
+                app:drawableTopCompat="@drawable/ic_page" />
 
-            <ImageButton
+            <TextView
                 android:id="@+id/flashButton"
                 style="@style/Widget.DocScanner.CameraOption"
                 android:contentDescription="@string/flash_off_description"
-                android:src="@drawable/ic_flash_off" />
+                android:text="@string/option_flash"
+                app:drawableTopCompat="@drawable/ic_flash_off" />
 
-            <FrameLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content">
+            <TextView
+                android:id="@+id/timerButton"
+                style="@style/Widget.DocScanner.CameraOption"
+                android:contentDescription="@string/timer_off_description"
+                android:text="@string/option_timer"
+                app:drawableTopCompat="@drawable/ic_timer" />
 
-                <ImageButton
-                    android:id="@+id/timerButton"
-                    style="@style/Widget.DocScanner.CameraOption"
-                    android:contentDescription="@string/timer_off_description"
-                    android:src="@drawable/ic_timer" />
-
-                <TextView
-                    android:id="@+id/timerLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="14dp"
-                    android:layout_marginBottom="6dp"
-                    android:importantForAccessibility="no"
-                    android:textColor="@color/accent"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-            </FrameLayout>
-
-            <ImageButton
+            <TextView
                 android:id="@+id/autoButton"
                 style="@style/Widget.DocScanner.CameraOption"
                 android:contentDescription="@string/auto_on_description"
-                android:src="@drawable/ic_auto" />
+                android:text="@string/option_auto"
+                app:drawableTopCompat="@drawable/ic_auto" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="24dp">
@@ -181,15 +214,12 @@
                     app:tint="@android:color/white" />
             </FrameLayout>
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
+            <ImageButton
                 android:id="@+id/shutterButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/action_capture"
-                android:src="@drawable/ic_camera"
-                app:fabCustomSize="76dp"
-                app:maxImageSize="32dp"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.DocScanner.Circle" />
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:background="@drawable/shutter"
+                android:contentDescription="@string/action_capture" />
 
             <!-- Last captured page; tap to finish and open the document. -->
             <FrameLayout
@@ -200,17 +230,20 @@
                 <FrameLayout
                     android:id="@+id/doneButton"
                     android:layout_width="56dp"
-                    android:layout_height="64dp"
+                    android:layout_height="68dp"
                     android:layout_gravity="center"
-                    android:background="?attr/selectableItemBackground"
+                    android:background="?attr/selectableItemBackgroundBorderless"
                     android:visibility="invisible">
 
                     <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/lastPage"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
+                        android:layout_marginTop="6dp"
+                        android:layout_marginEnd="6dp"
                         android:background="@color/surface_high"
                         android:importantForAccessibility="no"
+                        android:padding="1dp"
                         android:scaleType="centerCrop"
                         app:shapeAppearanceOverlay="@style/ShapeAppearance.DocScanner.Thumb"
                         app:strokeColor="@android:color/white"
@@ -221,8 +254,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="22dp"
                         android:layout_gravity="top|end"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginEnd="4dp"
                         android:background="@drawable/bg_count_badge"
                         android:gravity="center"
                         android:minWidth="22dp"
@@ -235,10 +266,11 @@
         </LinearLayout>
     </LinearLayout>
 
-    <ProgressBar
+    <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:indeterminate="true"
         android:visibility="gone" />
 </FrameLayout>

@@ -40,15 +40,23 @@ object ScanPipeline {
         }
     }
 
+    /**
+     * Always returns a new bitmap and leaves [geometry] untouched, so the crop screen can call
+     * it again with another look. Steps that don't apply are skipped rather than copied through:
+     * a flat page with the default look is one pass over the pixels instead of two.
+     */
     fun finish(geometry: Bitmap, spec: PageSpec): Bitmap {
-        var page = ImageProcessor.correctGutter(geometry, spec.side)
-        if (spec.removeFingers) {
-            val clean = FingerRemover.remove(page)
-            page.recycle()
-            page = clean
+        var page = geometry
+        fun advance(next: Bitmap) {
+            if (next === page) return
+            if (page !== geometry) page.recycle()
+            page = next
         }
-        val filtered = ImageProcessor.applyFilter(page, spec.filter).also { page.recycle() }
-        return ImageProcessor.rotate(filtered, spec.rotation).also { if (it !== filtered) filtered.recycle() }
+        if (spec.side != PageSide.NONE) advance(ImageProcessor.correctGutter(page, spec.side))
+        if (spec.removeFingers) advance(FingerRemover.remove(page))
+        if (spec.filter != PageFilter.ORIGINAL) advance(ImageProcessor.applyFilter(page, spec.filter))
+        advance(ImageProcessor.rotate(page, spec.rotation))
+        return if (page === geometry) geometry.copy(Bitmap.Config.ARGB_8888, false) else page
     }
 
     fun render(photo: Bitmap, spec: PageSpec): Bitmap {

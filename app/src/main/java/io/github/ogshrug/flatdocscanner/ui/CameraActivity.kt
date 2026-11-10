@@ -7,14 +7,22 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.annotation.SuppressLint
 import android.util.Size
+import android.view.GestureDetector
 import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
+import android.view.View
+import android.view.WindowManager
+import android.view.animation.OvershootInterpolator
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -34,6 +42,7 @@ import io.github.ogshrug.flatdocscanner.databinding.ActivityCameraBinding
 import io.github.ogshrug.flatdocscanner.repository
 import io.github.ogshrug.flatdocscanner.settings
 import io.github.ogshrug.flatdocscanner.scan.AutoCapture
+import io.github.ogshrug.flatdocscanner.scan.Dewarper
 import io.github.ogshrug.flatdocscanner.scan.FrameAnalyzer
 import io.github.ogshrug.flatdocscanner.scan.LiveFrame
 import io.github.ogshrug.flatdocscanner.scan.Quad
@@ -49,11 +58,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * Capture screen (S02). Shows the detected page live. In Auto mode it captures by itself
  * when the page is still and sharp, saves the page in the background and waits for the
  * next page turn. A shutter tap (either mode) opens [CropActivity] for that photo.
+ * Tap the preview to focus there; pinch to zoom.
  */
 class CameraActivity : AppCompatActivity() {
 
@@ -65,6 +76,7 @@ class CameraActivity : AppCompatActivity() {
     private var documentId: Long? = null
     private var openedFromDocument = false
     private var savedPages = 0
+    private var shownPages = 0
 
     private var autoMode = true
     private var bookMode = false
@@ -118,7 +130,10 @@ class CameraActivity : AppCompatActivity() {
         setContentView(binding.root)
         binding.topBar.padForSystemBars(top = true)
         binding.bottomBar.padForSystemBars(bottom = true)
+        // Scanning a book takes minutes with no touches; the screen must not dim meanwhile.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         analysisExecutor = Executors.newSingleThreadExecutor()
+        setUpGestures()
 
         val fromIntent = intent.getLongExtra(EXTRA_DOCUMENT_ID, -1L)
         openedFromDocument = fromIntent >= 0
@@ -134,20 +149,28 @@ class CameraActivity : AppCompatActivity() {
             bookMode = !bookMode
             prefs.edit { putBoolean(PREF_BOOK, bookMode) }
             updateBookButton()
-            if (bookMode) Toast.makeText(this, R.string.book_turned_on, Toast.LENGTH_LONG).show()
+            if (bookMode) {
+                showHint(getString(R.string.book_turned_on))
+                warmUpBookModel()
+            } else {
+                hideHint.run()
+            }
         }
+        if (bookMode) warmUpBookModel()
         binding.autoButton.setOnClickListener {
             autoMode = !autoMode
             prefs.edit { putBoolean(PREF_AUTO, autoMode) }
             if (autoMode) setTimer(0)
             updateAutoButton()
-            if (autoMode) Toast.makeText(this, R.string.auto_turned_on, Toast.LENGTH_LONG).show()
+            showHint(getString(if (autoMode) R.string.auto_turned_on else R.string.manual_turned_on))
         }
         binding.timerButton.setOnClickListener {
             // Off <-> every N seconds (N set in Settings). Interval shooting and auto-capture are alternatives.
             setTimer(if (timerSeconds == 0) settings.timerSeconds else 0)
             if (timerSeconds > 0) {
-                Toast.makeText(this, resources.getQuantityString(R.plurals.timer_turned_on, timerSeconds, timerSeconds), Toast.LENGTH_LONG).show()
+                showHint(resources.getQuantityString(R.plurals.timer_turned_on, timerSeconds, timerSeconds))
+            } else {
+                hideHint.run()
             }
         }
         binding.flashButton.setOnClickListener {
@@ -181,6 +204,84 @@ class CameraActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putLong(EXTRA_DOCUMENT_ID, documentId ?: -1L)
+    }
+
+    /** The flattening model is only needed for book spreads and curved pages; load it ahead of the first one. */
+    private fun warmUpBookModel() {
+        lifecycleScope.launch(Dispatchers.Default) { Dewarper.warmUp() }
+    }
+
+    // --- hints ---------------------------------------------------------------------------
+
+    private val hideHint = Runnable {
+        binding.hint.animate().alpha(0f).setDuration(200)
+            .withEndAction { binding.hint.visibility = View.INVISIBLE }.start()
+    }
+
+    /** Says what a setting does, just above the controls, and fades away by itself. */
+    private fun showHint(text: CharSequence) {
+        binding.hint.removeCallbacks(hideHint)
+        binding.hint.animate().cancel()
+        binding.hint.text = text
+        binding.hint.visibility = View.VISIBLE
+        binding.hint.animate().alpha(1f).setDuration(150).withEndAction(null).start()
+        binding.hint.postDelayed(hideHint, HINT_MILLIS)
+    }
+
+    // --- focus and zoom ------------------------------------------------------------------
+
+    private val hideZoom = Runnable { binding.zoomLabel.animate().alpha(0f).setDuration(250).start() }
+
+    /** Tap the preview to focus and expose there; pinch to zoom. */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setUpGestures() {
+        val pinch = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val cam = camera ?: return true
+                val zoom = cam.cameraInfo.zoomState.value ?: return true
+                val ratio = (zoom.zoomRatio * detector.scaleFactor).coerceIn(zoom.minZoomRatio, zoom.maxZoomRatio)
+                cam.cameraControl.setZoomRatio(ratio)
+                binding.zoomLabel.removeCallbacks(hideZoom)
+                binding.zoomLabel.animate().cancel()
+                binding.zoomLabel.text = getString(R.string.zoom_value, ratio)
+                binding.zoomLabel.alpha = 1f
+                binding.zoomLabel.postDelayed(hideZoom, 1200)
+                return true
+            }
+        })
+        val tap = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent) = true
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                focusAt(e.x, e.y)
+                return true
+            }
+        })
+        // The overlay covers the preview exactly, so its touch coordinates are the preview's.
+        binding.overlay.setOnTouchListener { _, event ->
+            pinch.onTouchEvent(event)
+            if (!pinch.isInProgress) tap.onTouchEvent(event)
+            true
+        }
+    }
+
+    private fun focusAt(x: Float, y: Float) {
+        val cam = camera ?: return
+        val point = binding.preview.meteringPointFactory.createPoint(x, y)
+        val action = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE)
+            .setAutoCancelDuration(3, TimeUnit.SECONDS)
+            .build()
+        runCatching { cam.cameraControl.startFocusAndMetering(action) }
+
+        val ring = binding.focusRing
+        ring.animate().cancel()
+        ring.x = x - ring.width / 2f
+        ring.y = y - ring.height / 2f
+        ring.scaleX = 1.35f
+        ring.scaleY = 1.35f
+        ring.alpha = 1f
+        ring.animate().setStartDelay(0).scaleX(1f).scaleY(1f).setDuration(180).withEndAction {
+            ring.animate().alpha(0f).setStartDelay(500).setDuration(250).withEndAction(null).start()
+        }.start()
     }
 
     private fun startCamera() {
@@ -400,12 +501,22 @@ class CameraActivity : AppCompatActivity() {
             binding.pageBadge.text = java.text.NumberFormat.getIntegerInstance().format(total)
             binding.doneButton.contentDescription = resources.getQuantityString(R.plurals.done_description, total, total)
             pages.lastOrNull()?.let { Thumbnails.load(binding.lastPage, it.processedPath, 256, lifecycleScope) }
+            // A small bounce confirms that the page just taken has landed in the folder.
+            if (total > shownPages) {
+                binding.doneButton.animate().cancel()
+                binding.doneButton.scaleX = 0.8f
+                binding.doneButton.scaleY = 0.8f
+                binding.doneButton.animate().scaleX(1f).scaleY(1f).setDuration(260)
+                    .setInterpolator(OvershootInterpolator(3f)).start()
+            }
+            shownPages = total
         }
     }
 
     private fun updateBookButton() {
         binding.bookButton.isActivated = bookMode
-        binding.bookButton.setImageResource(if (bookMode) R.drawable.ic_book else R.drawable.ic_page)
+        binding.bookButton.setCompoundDrawablesWithIntrinsicBounds(0, if (bookMode) R.drawable.ic_book else R.drawable.ic_page, 0, 0)
+        binding.bookButton.setText(if (bookMode) R.string.option_book else R.string.option_page)
         binding.modeTitle.setText(if (bookMode) R.string.mode_title_book else R.string.mode_title_page)
         binding.bookButton.contentDescription =
             getString(if (bookMode) R.string.book_on_description else R.string.book_off_description)
@@ -419,14 +530,15 @@ class CameraActivity : AppCompatActivity() {
 
     private fun updateFlashButton() {
         binding.flashButton.isActivated = torchOn
-        binding.flashButton.setImageResource(if (torchOn) R.drawable.ic_flash_on else R.drawable.ic_flash_off)
+        binding.flashButton.setCompoundDrawablesWithIntrinsicBounds(0, if (torchOn) R.drawable.ic_flash_on else R.drawable.ic_flash_off, 0, 0)
         binding.flashButton.contentDescription =
             getString(if (torchOn) R.string.flash_on_description else R.string.flash_off_description)
     }
 
     private fun updateTimerButton() {
         binding.timerButton.isActivated = timerSeconds > 0
-        binding.timerLabel.text = if (timerSeconds > 0) getString(R.string.timer_seconds_short, timerSeconds) else ""
+        binding.timerButton.text =
+            if (timerSeconds > 0) getString(R.string.timer_seconds_short, timerSeconds) else getString(R.string.option_timer)
         binding.timerButton.contentDescription = if (timerSeconds > 0) {
             resources.getQuantityString(R.plurals.timer_on_description, timerSeconds, timerSeconds)
         } else {
@@ -453,6 +565,7 @@ class CameraActivity : AppCompatActivity() {
         const val EXTRA_DOCUMENT_ID = "document_id"
         private const val PREF_AUTO = "auto_capture"
         private const val PREF_BOOK = "book_mode"
+        private const val HINT_MILLIS = 3500L
 
         fun intent(context: Context, documentId: Long?) = Intent(context, CameraActivity::class.java)
             .putExtra(EXTRA_DOCUMENT_ID, documentId ?: -1L)

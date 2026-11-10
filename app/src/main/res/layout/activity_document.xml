@@ -37,11 +37,21 @@
         android:orientation="vertical"
         android:visibility="gone">
 
+        <ImageView
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_empty_icon"
+            android:importantForAccessibility="no"
+            android:padding="24dp"
+            android:src="@drawable/ic_page"
+            app:tint="@color/accent" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/no_pages_title"
-            android:textAppearance="?attr/textAppearanceTitleMedium" />
+            android:textAppearance="?attr/textAppearanceTitleLarge" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -74,7 +84,7 @@
             android:id="@+id/actionBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/surface_low"
+            android:background="@drawable/bg_bottom_bar"
             android:orientation="horizontal">
 
             <TextView
@@ -109,8 +119,9 @@
         </LinearLayout>
     </LinearLayout>
 
-    <ProgressBar
+    <com.google.android.material.progressindicator.CircularProgressIndicator
         android:id="@+id/progress"
+        android:indeterminate="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"

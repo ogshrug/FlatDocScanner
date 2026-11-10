@@ -2,7 +2,10 @@
 <!-- One page in the continuous reader view: full width, in its own proportions. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    style="?attr/materialCardViewOutlinedStyle"
+    style="?attr/materialCardViewFilledStyle"
+    app:cardBackgroundColor="@color/surface"
+    app:strokeColor="@color/card_stroke"
+    app:strokeWidth="1.5dp"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginHorizontal="12dp"

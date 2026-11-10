@@ -18,15 +18,25 @@ import io.github.ogshrug.flatdocscanner.scan.FingerRemover
 import io.github.ogshrug.flatdocscanner.scan.ImageProcessor
 import io.github.ogshrug.flatdocscanner.scan.PageDetector
 import io.github.ogshrug.flatdocscanner.scan.PageFilter
+import io.github.ogshrug.flatdocscanner.scan.PageMode
+import io.github.ogshrug.flatdocscanner.scan.PageSpec
 import io.github.ogshrug.flatdocscanner.scan.Pt
 import io.github.ogshrug.flatdocscanner.scan.Quad
+import io.github.ogshrug.flatdocscanner.scan.ScanPipeline
 import io.github.ogshrug.flatdocscanner.util.Bitmaps
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.opencv.core.Core
+import org.opencv.core.CvType
+import org.opencv.core.Mat
 import java.io.File
+import java.nio.ByteBuffer
 
 /**
  * Runs the image pipeline on a real Android device or emulator: OpenCV, both ONNX models,
@@ -77,6 +87,69 @@ class PipelineDeviceTest {
         val worst = quad!!.points.zip(truth.points).maxOf { (a, b) -> a.distanceTo(b) }
         // Within 3% of the photo's long side.
         assertTrue("corners off by $worst px: $quad", worst < 48)
+    }
+
+    /** The live detector reuses its working memory between frames; a second call must agree with the first. */
+    @Test
+    fun detectsTheSamePageTwice() {
+        val photo = photo()
+        val first = PageDetector.detect(photo)
+        val second = PageDetector.detect(photo)
+        assertNotNull("no page found", first)
+        assertEquals(first, second)
+    }
+
+    /** The crop screen re-runs the finishing step on one geometry bitmap, so it must survive every look. */
+    @Test
+    fun finishingLeavesItsInputAlone() {
+        val geometry = ImageProcessor.warp(photo(), truth)
+        val before = geometry.getPixel(geometry.width / 2, geometry.height / 2)
+        val looks = listOf(
+            PageSpec(null, PageMode.FLAT, filter = PageFilter.ORIGINAL, removeFingers = false),
+            PageSpec(null, PageMode.FLAT, filter = PageFilter.COLOR, removeFingers = false),
+            PageSpec(null, PageMode.FLAT, filter = PageFilter.BW, removeFingers = true),
+            PageSpec(null, PageMode.FLAT, filter = PageFilter.ORIGINAL, removeFingers = false, rotation = 90),
+            PageSpec(null, PageMode.FLAT, filter = PageFilter.GRAY, removeFingers = true, rotation = 270),
+        )
+        for (spec in looks) {
+            val out = ScanPipeline.finish(geometry, spec)
+            assertNotSame("finish returned its input for $spec", geometry, out)
+            assertFalse("finish recycled its input for $spec", geometry.isRecycled)
+            assertEquals(before, geometry.getPixel(geometry.width / 2, geometry.height / 2))
+            val turned = spec.rotation % 180 != 0
+            assertEquals(if (turned) geometry.height else geometry.width, out.width)
+            assertEquals(if (turned) geometry.width else geometry.height, out.height)
+            out.recycle()
+        }
+    }
+
+    /**
+     * Camera frames are read in place from native memory whose rows are padded; the padding
+     * must not leak into the picture.
+     */
+    @Test
+    fun readsPaddedFrameRowsInPlace() {
+        val w = 6
+        val h = 4
+        val stride = w * 4 + 12
+        val frame = ByteBuffer.allocateDirect(stride * h)
+        for (i in 0 until stride * h) frame.put(i, 0x7F)
+        for (y in 0 until h) for (x in 0 until w) for (c in 0 until 4) {
+            frame.put(y * stride + x * 4 + c, (y * 40 + x * 5 + c).toByte())
+        }
+        val wrapped = Mat(h, w, CvType.CV_8UC4, frame, stride.toLong())
+        val upright = Mat()
+        Core.rotate(wrapped, upright, Core.ROTATE_90_CLOCKWISE)
+        wrapped.release()
+        assertEquals(w, upright.rows())
+        assertEquals(h, upright.cols())
+        val px = ByteArray(4)
+        for (y in 0 until h) for (x in 0 until w) {
+            // Turned a quarter clockwise, (x, y) lands at row x, column h - 1 - y.
+            upright.get(x, h - 1 - y, px)
+            for (c in 0 until 4) assertEquals("pixel $x,$y channel $c", (y * 40 + x * 5 + c).toByte(), px[c])
+        }
+        upright.release()
     }
 
     @Test

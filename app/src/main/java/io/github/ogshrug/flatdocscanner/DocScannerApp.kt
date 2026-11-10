@@ -23,8 +23,12 @@ class DocScannerApp : Application() {
         Dewarper.init(this)
         CornerModel.init(this)
         repository = ScanRepository(this, AppDatabase.create(this).scanDao())
+        val background = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        // The page finder is needed by the camera's very first frame; load it while the
+        // library is still drawing instead of when the camera opens.
+        background.launch { CornerModel.warmUp() }
         // Whatever has sat in the Trash for 30 days is deleted for good.
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { runCatching { repository.purgeOldTrash() } }
+        background.launch(Dispatchers.IO) { runCatching { repository.purgeOldTrash() } }
     }
 }
 

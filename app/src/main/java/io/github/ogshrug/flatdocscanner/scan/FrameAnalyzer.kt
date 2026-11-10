@@ -36,6 +36,9 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
     private val upright = Mat()
     private val small = Mat()
     private val gray = Mat()
+    private val lap = Mat()
+    private val lapMean = MatOfDouble()
+    private val lapStd = MatOfDouble()
 
     override fun analyze(image: ImageProxy) {
         try {
@@ -65,21 +68,29 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
         val h = image.height
         val buffer = plane.buffer
         val rowStride = plane.rowStride
-        val rowBytes = w * 4
-        if (rowBuffer.size != rowBytes * h) rowBuffer = ByteArray(rowBytes * h)
-        // Rows can be padded to rowStride, so copy them one at a time.
-        for (row in 0 until h) {
-            buffer.position(row * rowStride)
-            buffer.get(rowBuffer, row * rowBytes, rowBytes)
+        // Camera frames arrive in native memory, so OpenCV can read them in place (rows may be
+        // padded to rowStride). Turning the frame upright is then the only copy made of it.
+        val wrapped = if (buffer.isDirect) Mat(h, w, CvType.CV_8UC4, buffer, rowStride.toLong()) else null
+        val source = wrapped ?: raw.also {
+            val rowBytes = w * 4
+            if (rowBuffer.size != rowBytes * h) rowBuffer = ByteArray(rowBytes * h)
+            for (row in 0 until h) {
+                buffer.position(row * rowStride)
+                buffer.get(rowBuffer, row * rowBytes, rowBytes)
+            }
+            it.create(h, w, CvType.CV_8UC4)
+            it.put(0, 0, rowBuffer)
         }
-        raw.create(h, w, CvType.CV_8UC4)
-        raw.put(0, 0, rowBuffer)
-
-        when (image.imageInfo.rotationDegrees) {
-            90 -> Core.rotate(raw, upright, Core.ROTATE_90_CLOCKWISE)
-            180 -> Core.rotate(raw, upright, Core.ROTATE_180)
-            270 -> Core.rotate(raw, upright, Core.ROTATE_90_COUNTERCLOCKWISE)
-            else -> raw.copyTo(upright)
+        try {
+            when (image.imageInfo.rotationDegrees) {
+                90 -> Core.rotate(source, upright, Core.ROTATE_90_CLOCKWISE)
+                180 -> Core.rotate(source, upright, Core.ROTATE_180)
+                270 -> Core.rotate(source, upright, Core.ROTATE_90_COUNTERCLOCKWISE)
+                else -> source.copyTo(upright)
+            }
+        } finally {
+            // Only the header: the pixels belong to the camera frame, which the caller closes.
+            wrapped?.release()
         }
 
         val scale = PageDetector.DETECT_MAX_DIM.toDouble() / max(upright.cols(), upright.rows())
@@ -102,16 +113,13 @@ class FrameAnalyzer(private val onFrame: (LiveFrame) -> Unit) : ImageAnalysis.An
             val y1 = (ys.max() - insetY).toInt().coerceIn(y0 + 1, gray.rows())
             gray.submat(Rect(x0, y0, x1 - x0, y1 - y0))
         } else gray
-        val lap = Mat()
-        val mean = MatOfDouble()
-        val std = MatOfDouble()
         try {
-            Imgproc.Laplacian(roi, lap, CvType.CV_64F)
-            Core.meanStdDev(lap, mean, std)
-            val s = std.get(0, 0)[0]
+            // 16-bit holds every possible value exactly, at a quarter of the memory of doubles.
+            Imgproc.Laplacian(roi, lap, CvType.CV_16S)
+            Core.meanStdDev(lap, lapMean, lapStd)
+            val s = lapStd.get(0, 0)[0]
             return s * s
         } finally {
-            lap.release(); mean.release(); std.release()
             if (roi !== gray) roi.release()
         }
     }

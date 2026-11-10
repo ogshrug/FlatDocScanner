@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fades the camera controls into the preview instead of cutting it with a hard band. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="90"
+        android:centerColor="#CC000000"
+        android:centerY="0.55"
+        android:endColor="#00000000"
+        android:startColor="#F2000000" />
+</shape>

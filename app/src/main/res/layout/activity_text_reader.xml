@@ -36,7 +36,7 @@
         android:id="@+id/actionBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/surface_low"
+        android:background="@drawable/bg_bottom_bar"
         android:orientation="horizontal">
 
         <TextView

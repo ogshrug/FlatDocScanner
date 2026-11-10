@@ -170,6 +170,29 @@ class ScanRepository(context: Context, private val dao: ScanDao) {
         dao.touchDocument(page.documentId, System.currentTimeMillis())
     }
 
+    /** Moves several pages to the Trash at once; each folder is renumbered once, not once per page. */
+    suspend fun deletePages(pages: List<PageEntity>) {
+        val now = System.currentTimeMillis()
+        pages.forEach { dao.setPageDeleted(it.id, now) }
+        pages.map { it.documentId }.distinct().forEach { doc ->
+            dao.reorder(dao.getPages(doc).map { it.id })
+            dao.touchDocument(doc, now)
+        }
+    }
+
+    /**
+     * Undoes [deletePages] right after it: the pages come back where they were. [orderBefore] is
+     * the folder's page ids as they stood before the deletion; pages added since go after them.
+     */
+    suspend fun undoDeletePages(documentId: Long, pages: List<PageEntity>, orderBefore: List<Long>) {
+        pages.forEach { dao.setPageDeleted(it.id, null) }
+        val present = dao.getPages(documentId).map { it.id }
+        val known = orderBefore.toSet()
+        val presentSet = present.toSet()
+        dao.reorder(orderBefore.filter { it in presentSet } + present.filter { it !in known })
+        dao.touchDocument(documentId, System.currentTimeMillis())
+    }
+
     /** Moves a folder (with its pages) to the Trash. */
     suspend fun deleteDocument(id: Long) = dao.setDocumentDeleted(id, System.currentTimeMillis())
 

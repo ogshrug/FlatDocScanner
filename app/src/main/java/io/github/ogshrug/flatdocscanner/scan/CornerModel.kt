@@ -8,6 +8,8 @@ import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 /**
@@ -29,22 +31,42 @@ object CornerModel {
     private lateinit var appContext: Context
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
     private val session: OrtSession by lazy {
-        val bytes = appContext.assets.open(MODEL_ASSET).use { it.readBytes() }
-        env.createSession(bytes, OrtSession.SessionOptions().apply { setIntraOpNumThreads(2) })
+        env.createSession(
+            ModelAssets.map(appContext, MODEL_ASSET),
+            OrtSession.SessionOptions().apply { setIntraOpNumThreads(2) },
+        )
     }
+
+    // Working memory, reused for every frame: the live preview calls detect() many times a
+    // second, and allocating half a megabyte each time keeps the garbage collector busy.
+    // detect() is synchronized, so the camera thread and a photo being saved take turns.
+    private val bgr = Mat()
+    private val pixels = ByteArray(IN * IN * 3)
+    private val input: FloatBuffer =
+        ByteBuffer.allocateDirect(3 * IN * IN * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
+    private val inputShape = longArrayOf(1, 3, IN.toLong(), IN.toLong())
+    private val heat = FloatArray(4 * HM_I * HM_I)
+    private val maskBytes = ByteArray(HM_I * HM_I)
+    private val labelValues = IntArray(HM_I * HM_I)
 
     fun init(context: Context) {
         appContext = context.applicationContext
     }
 
+    /** Loads the model now (call off the main thread), so the camera's first frame isn't held up. */
+    fun warmUp() {
+        runCatching { session }
+    }
+
     /** Finds the page in an RGBA image; returns its corners in that image's pixels, or null. */
+    @Synchronized
     fun detect(rgba: Mat): Quad? {
         val w = rgba.cols()
         val h = rgba.rows()
-        val heatmaps = run(rgba)
+        run(rgba)
         val peaks = FloatArray(4)
         val corners = (0 until 4).map { c ->
-            val (pt, peak) = corner(heatmaps[c])
+            val (pt, peak) = corner(c * HM_I * HM_I)
             peaks[c] = peak
             pt?.let { Pt(it.x / HM * w, it.y / HM * h) }
         }
@@ -57,42 +79,43 @@ object CornerModel {
         return ordered
     }
 
-    /** Model input is BGR in 0..1, CHW; the output is [1, 4, 128, 128]. */
-    private fun run(rgba: Mat): Array<Array<FloatArray>> {
-        val bgr = Mat()
+    /**
+     * Runs the model and leaves its output in [heat]: four 128x128 heatmaps, one after the
+     * other. Model input is BGR in 0..1, CHW; the output is [1, 4, 128, 128].
+     */
+    private fun run(rgba: Mat) {
         Imgproc.cvtColor(rgba, bgr, Imgproc.COLOR_RGBA2BGR)
         Imgproc.resize(bgr, bgr, Size(IN.toDouble(), IN.toDouble()), 0.0, 0.0, Imgproc.INTER_AREA)
-        val px = ByteArray(IN * IN * 3)
-        bgr.get(0, 0, px)
-        bgr.release()
+        bgr.get(0, 0, pixels)
         val plane = IN * IN
-        val chw = FloatArray(3 * plane)
+        // Written straight into native memory, which ONNX Runtime reads without another copy.
         for (i in 0 until plane) {
-            chw[i] = (px[i * 3].toInt() and 0xFF) / 255f
-            chw[plane + i] = (px[i * 3 + 1].toInt() and 0xFF) / 255f
-            chw[2 * plane + i] = (px[i * 3 + 2].toInt() and 0xFF) / 255f
+            input.put(i, (pixels[i * 3].toInt() and 0xFF) / 255f)
+            input.put(plane + i, (pixels[i * 3 + 1].toInt() and 0xFF) / 255f)
+            input.put(2 * plane + i, (pixels[i * 3 + 2].toInt() and 0xFF) / 255f)
         }
-        OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), longArrayOf(1, 3, IN.toLong(), IN.toLong())).use { input ->
-            session.run(mapOf("img" to input)).use { result ->
-                @Suppress("UNCHECKED_CAST")
-                return (result[0].value as Array<Array<Array<FloatArray>>>)[0]
+        input.rewind()
+        OnnxTensor.createTensor(env, input, inputShape).use { tensor ->
+            session.run(mapOf("img" to tensor)).use { result ->
+                (result[0] as OnnxTensor).floatBuffer.get(heat)
             }
         }
     }
 
     /**
-     * Weighted centre of the largest blob above half this heatmap's peak, in heatmap pixels
-     * (pixel centres at +0.5), and the peak value.
+     * Weighted centre of the largest blob above half the peak of the heatmap starting at
+     * [offset] in [heat], in heatmap pixels (pixel centres at +0.5), and the peak value.
      */
-    private fun corner(hm: Array<FloatArray>): Pair<Pt?, Float> {
+    private fun corner(offset: Int): Pair<Pt?, Float> {
+        val size = HM_I * HM_I
         var peak = 0f
-        for (row in hm) for (v in row) if (v > peak) peak = v
+        for (i in 0 until size) if (heat[offset + i] > peak) peak = heat[offset + i]
         if (peak < MIN_PEAK) return null to peak
         val threshold = maxOf(MIN_PEAK, 0.5f * peak)
 
         val mask = Mat(HM_I, HM_I, CvType.CV_8U)
-        val bytes = ByteArray(HM_I * HM_I)
-        for (y in 0 until HM_I) for (x in 0 until HM_I) if (hm[y][x] >= threshold) bytes[y * HM_I + x] = 1
+        val bytes = maskBytes
+        for (i in 0 until size) bytes[i] = if (heat[offset + i] >= threshold) 1 else 0
         mask.put(0, 0, bytes)
         val labels = Mat()
         val stats = Mat()
@@ -104,14 +127,14 @@ object CornerModel {
             for (i in 2 until n) {
                 if (stats.get(i, Imgproc.CC_STAT_AREA)[0] > stats.get(best, Imgproc.CC_STAT_AREA)[0]) best = i
             }
-            val lab = IntArray(HM_I * HM_I)
+            val lab = labelValues
             labels.get(0, 0, lab)
             var sw = 0.0
             var sx = 0.0
             var sy = 0.0
             for (y in 0 until HM_I) for (x in 0 until HM_I) {
                 if (lab[y * HM_I + x] == best) {
-                    val wgt = hm[y][x].toDouble()
+                    val wgt = heat[offset + y * HM_I + x].toDouble()
                     sw += wgt; sx += x * wgt; sy += y * wgt
                 }
             }

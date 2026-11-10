@@ -6,7 +6,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 
 ## Features
 
-- **Live page outline**: every preview frame is analysed, and the detected page is drawn over the camera view
+- **Live page outline**: every preview frame is analysed, and the detected page is drawn over the camera view. The drawn outline glides between detections instead of jittering, and fades in and out as a page is found and lost
 - **Auto-capture** (on by default, toggle with **Auto / Manual**):
   - fires once the page is large enough, sharp and held still for 0.7 s; the outline fills in as it counts down
   - **page-turn detection**: after a capture it waits for the page to leave the view or the outline to jump, and refuses to capture content that matches the previous page, so you can scan a book just by turning pages
@@ -19,7 +19,8 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Curved-page flattening** with [UVDoc](https://github.com/tanguymagne/UVDoc) (MIT), running on-device with ONNX Runtime. The model predicts a 31×45 grid of where the flat page lies in the photo; the full-resolution photo is remapped through it, and the page's real proportions are estimated from the grid. Single pages without a clean 4-corner outline are treated as curved automatically, and the crop screen has a **Flat / Curved** switch.
 - **Finger removal**: finds skin-coloured blobs touching the page edge, judged against that page's own paper colour so cream or yellowed paper isn't mistaken for skin, and inpaints them. On by default; switch per page.
 - **Focus check**: variance of the Laplacian inside the page, judged against the sharpest recent frame so plain pages aren't mistaken for blurry ones
-- **Camera toolbar**: Page / Book mode, **flash** (torch), **interval timer** (a photo every 3 or 5 seconds, for turning pages at your own pace; pauses when the app is in the background) and Auto. The detected page is tinted, and an AUTO badge fills up while you hold still.
+- **Camera toolbar**: labelled Page / Book, **Flash** (torch), **Timer** (a photo every 3 or 5 seconds, for turning pages at your own pace; pauses when the app is in the background) and Auto. Switching one on explains it in a short hint above the controls. The detected page is tinted, and an AUTO badge fills up while you hold still.
+- **Tap to focus, pinch to zoom** on the preview. The screen stays on while you scan.
 - **Camera capture** with CameraX, plus **import from gallery**
 - **Share photos to the app**: share one or more images from the gallery or any app (or "Open with"), and each is scanned into a new document
 - **Automatic page detection** with a learned corner model ([DocAligner](https://github.com/DocsaidLab/DocAligner) LCNet, Apache-2.0, 4.8 MB) running on-device with ONNX Runtime. It predicts a heatmap per corner, and one hidden or folded corner is completed from the other three. For a captured photo, a classical fallback looks for the page in grey edges, colour edges and the bright paper region, fits a straight line to each side, and keeps the outline that best follows real edges. On the 130 real photos of the DocUNet benchmark, this finds the right outline about 90% of the time; the previous edge-only detector managed 17%.
@@ -35,7 +36,7 @@ An Android document and book scanner. Point your phone at a page and FlatDocScan
 - **Library of folders**: a grid of covers with page counts; new empty folders; search, sort (modified / created / name); select folders to make one PDF or ZIP, or move them to the Trash
 - **Folder screen**: bottom bar with Import, Text, Share, Create PDF and More (move pages to another folder, save to gallery, set as cover, crop, rotate left/right, delete); actions apply to the selected pages or the whole folder
 - **Create PDF**: file name with quick templates (folder name, date), page size (fit, A4, Letter), quality, colour (as scanned, grayscale, black & white) and page order
-- **Trash**: deleted folders and pages can be restored for 30 days, then they are deleted for good
+- **Trash**: deleted folders and pages can be restored for 30 days, then they are deleted for good. Deleting happens at once with an **Undo** bar (pages return to their old place) instead of a confirmation dialog
 - **Settings**: save scans to gallery, vibrate, two-page order (left or right page first, for right-to-left books), interval timer length, start in the camera, text recognition language, storage used
 - **Grid or reader view**: pages as a grid, or as a continuous full-width scroll like an e-book
 - **Search**: finds words in the recognised text and marks them on the page images, in the document and in the full-screen viewer
@@ -114,6 +115,7 @@ app/src/main/java/io/github/ogshrug/flatdocscanner/
 │   ├── ScanPipeline.kt       Photo → finished page (geometry, then finishing), auto-save
 │   ├── PageSpec.kt           Page settings, spine line fit, gutter gains (pure Kotlin)
 │   ├── CornerModel.kt        DocAligner page-corner model via ONNX Runtime
+│   ├── ModelAssets.kt        Memory-maps the model files straight from the APK
 │   ├── Dewarper.kt           UVDoc curved-page flattening via ONNX Runtime
 │   ├── SpineDetector.kt      Book gutter detection
 │   └── FingerRemover.kt      Finger detection and inpainting
@@ -215,6 +217,17 @@ Release builds are shrunk with R8 and signed with an upload key kept outside git
 ./gradlew :app:bundleRelease     # Play upload: app/build/outputs/bundle/release/app-release.aab
 ./gradlew :app:assembleRelease   # installable APK for testing the shrunk build
 ```
+
+## Performance notes
+
+- **Live preview**: camera frames are read in place from native memory (no per-frame copies into the Java heap), and the corner model reuses its input and output buffers, so the analyser allocates almost nothing per frame.
+- **Models**: both `.onnx` files are memory-mapped from the APK rather than read into byte arrays, and the corner model is loaded in the background at app start so the camera's first frame isn't held up. The flattening model is loaded ahead of time when Book mode is on.
+- **Saving a page**: finishing steps that don't apply (gutter, fingers, filter, rotation) are skipped instead of copying the page through.
+- **Lists**: the library and folder grids update by diff, thumbnails for views that scroll away are cancelled, and at most four are decoded at once.
+
+## Design
+
+Dark only: near-black surfaces with a faint teal cast and a single teal accent (`#2DD4BF`), defined in `res/values/colors.xml`. The accent is kept for the main action, selection and the "ready" page outline.
 
 ## Tuning
 

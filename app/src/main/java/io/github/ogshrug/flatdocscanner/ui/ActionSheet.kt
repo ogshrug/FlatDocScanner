@@ -1,6 +1,7 @@
 package io.github.ogshrug.flatdocscanner.ui
 
 import android.content.res.ColorStateList
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.GridLayout
@@ -37,6 +38,9 @@ object ActionSheet {
             setPadding((8 * d).toInt(), 0, 0, (12 * d).toInt())
         })
         val grid = GridLayout(activity).apply { columnCount = columns }
+        val ripple = TypedValue().also {
+            activity.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, it, true)
+        }
         actions.forEach { a ->
             val color = activity.getColor(
                 when {
@@ -49,14 +53,13 @@ object ActionSheet {
                 setText(a.label)
                 setCompoundDrawablesWithIntrinsicBounds(0, a.icon, 0, 0)
                 TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(color))
-                setTextColor(color)
                 setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelSmall)
                 setTextColor(color)
                 gravity = Gravity.CENTER
                 compoundDrawablePadding = (4 * d).toInt()
                 setPadding((2 * d).toInt(), (10 * d).toInt(), (2 * d).toInt(), (10 * d).toInt())
                 isEnabled = a.enabled
-                setBackgroundResource(android.R.drawable.list_selector_background)
+                setBackgroundResource(ripple.resourceId)
                 setOnClickListener {
                     dialog.dismiss()
                     a.onClick()

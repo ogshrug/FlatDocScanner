@@ -152,6 +152,7 @@ class TrashActivity : AppCompatActivity() {
 
         private fun bind(b: ItemFolderBinding, cover: String?, title: String, subtitle: String, onClick: () -> Unit) {
             b.cover.aspect = 4f / 3f
+            b.cover.clipToOutline = true
             b.title.text = title
             b.count.text = subtitle
             b.count.setCompoundDrawables(null, null, null, null)
