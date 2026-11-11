@@ -47,7 +47,7 @@ class PageOverlayView @JvmOverloads constructor(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val outline = Path()
     private val brackets = Path()
-    private val readyColor = ContextCompat.getColor(context, R.color.accent)
+    private val readyColor = context.themeColor(androidx.appcompat.R.attr.colorPrimary)
     private val bracketLength = 26 * density
 
     /** Latest outline from the detector and the one being drawn, as x0, y0, … x3, y3 in 0..1. */

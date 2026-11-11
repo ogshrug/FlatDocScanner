@@ -40,7 +40,7 @@ class ZoomImageView @JvmOverloads constructor(
             invalidate()
         }
     private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.accent), 110)
+        color = ColorUtils.setAlphaComponent(context.themeColor(androidx.appcompat.R.attr.colorPrimary), 110)
     }
     private val mark = RectF()
 

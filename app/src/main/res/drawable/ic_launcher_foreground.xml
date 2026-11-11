@@ -7,43 +7,43 @@
     <path
         android:pathData="M32,40 L32,28 L44,28"
         android:strokeWidth="5"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M64,28 L76,28 L76,40"
         android:strokeWidth="5"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M76,68 L76,80 L64,80"
         android:strokeWidth="5"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M44,80 L32,80 L32,68"
         android:strokeWidth="5"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M41,44 L67,44"
         android:strokeWidth="4"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M41,54 L67,54"
         android:strokeWidth="4"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
     <path
         android:pathData="M41,64 L59,64"
         android:strokeWidth="4"
-        android:strokeColor="@color/accent"
+        android:strokeColor="?attr/colorPrimary"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 </vector>

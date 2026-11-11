@@ -28,7 +28,7 @@ class ImportActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivityImportBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

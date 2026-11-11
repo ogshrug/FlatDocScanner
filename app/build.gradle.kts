@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.ogshrug.flatdocscanner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -38,6 +38,20 @@ android {
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
             }
+        }
+    }
+
+    // Where the app is distributed. "github" carries a self-updater and so the internet
+    // permission; "play" has neither, because Play delivers updates and forbids apps
+    // that update themselves.
+    flavorDimensions += "channel"
+    productFlavors {
+        create("github") {
+            dimension = "channel"
+            buildConfigField("String", "UPDATE_REPO", "\"ogshrug/FlatDocScanner\"")
+        }
+        create("play") {
+            dimension = "channel"
         }
     }
 

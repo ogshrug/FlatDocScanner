@@ -40,7 +40,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:max="100"
-            app:indicatorColor="@color/accent"
+            app:indicatorColor="?attr/colorPrimary"
             app:indicatorInset="6dp"
             app:indicatorSize="84dp"
             app:trackColor="#33FFFFFF"
@@ -53,7 +53,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:textAppearance="?attr/textAppearanceTitleMedium"
-            android:textColor="@color/accent"
+            android:textColor="?attr/colorPrimary"
             android:textStyle="bold" />
     </FrameLayout>
 
@@ -108,7 +108,7 @@
                 android:paddingHorizontal="10dp"
                 android:paddingVertical="4dp"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
-                android:textColor="@color/accent" />
+                android:textColor="?attr/colorPrimary" />
         </FrameLayout>
 
         <TextView
@@ -151,7 +151,7 @@
             android:paddingHorizontal="16dp"
             android:paddingVertical="10dp"
             android:textAppearance="?attr/textAppearanceBodyMedium"
-            android:textColor="@color/text_primary"
+            android:textColor="?attr/colorOnSurface"
             android:visibility="invisible" />
 
         <!-- Capture options: page/book, flash, interval timer, auto. -->
@@ -241,7 +241,7 @@
                         android:layout_height="match_parent"
                         android:layout_marginTop="6dp"
                         android:layout_marginEnd="6dp"
-                        android:background="@color/surface_high"
+                        android:background="?attr/colorSurfaceContainerHigh"
                         android:importantForAccessibility="no"
                         android:padding="1dp"
                         android:scaleType="centerCrop"
@@ -258,7 +258,7 @@
                         android:gravity="center"
                         android:minWidth="22dp"
                         android:paddingHorizontal="6dp"
-                        android:textColor="@color/on_accent"
+                        android:textColor="?attr/colorOnPrimary"
                         android:textSize="12sp"
                         android:textStyle="bold" />
                 </FrameLayout>

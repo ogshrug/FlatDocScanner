@@ -1,13 +1,30 @@
 # FlatDocScanner privacy policy
 
-_Last updated: 5 October 2026_
+_Last updated: 11 November 2026_
 
 FlatDocScanner is a document and book scanner that works entirely on your phone.
 
 ## What the app collects
 
 **Nothing.** FlatDocScanner has no account, no analytics, no advertising and no servers.
-The app does not request internet access, so it cannot send anything anywhere.
+Your scans, and the text recognised in them, are never uploaded.
+
+## Network access
+
+There are two builds of the app, and they differ only here.
+
+- **From Google Play**: the app does not request internet access, so it cannot send or
+  receive anything. Play delivers its updates.
+- **From GitHub**: the app requests internet access for one purpose, updating itself. Once a
+  day (you can switch this off in Settings), or when you tap "Check for updates", it asks
+  GitHub's public API which release is the latest. If you accept an update, it downloads that
+  release's APK from GitHub. These requests contain nothing about you, your phone's contents
+  or your scans. Like any download, they reveal your IP address to GitHub, whose own
+  [privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)
+  covers what it does with that.
+
+In both builds, the parts of the bundled text-recognition and model libraries that could
+report usage statistics to their makers are removed.
 
 ## What stays on your phone
 
@@ -35,6 +52,8 @@ Only when you choose to:
 
 - **Camera**: to photograph documents. Photos are used only for scanning.
 - **Storage** (Android 9 and older only): to save copies of pages to your gallery when you ask.
+- **Internet** and **Install apps** (GitHub build only): to download an update and hand it to
+  Android's installer, which asks you before installing.
 
 ## Children
 

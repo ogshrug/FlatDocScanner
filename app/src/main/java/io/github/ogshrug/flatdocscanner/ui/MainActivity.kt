@@ -23,6 +23,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import io.github.ogshrug.flatdocscanner.update.UpdateFeature
 import io.github.ogshrug.flatdocscanner.AppSettings
 import io.github.ogshrug.flatdocscanner.R
 import io.github.ogshrug.flatdocscanner.data.DocumentSummary
@@ -61,7 +62,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         onBackPressedDispatcher.addCallback(this, exitSelection)
@@ -239,6 +240,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        UpdateFeature.checkOnLaunch(this, binding.root, binding.scanButton)
         // A folder that was deleted from its own screen offers its Undo here.
         PendingUndo.take()?.let { showUndo(binding.root, binding.scanButton, it.message, it.undo) }
     }
@@ -347,7 +349,7 @@ class MainActivity : AppCompatActivity() {
             b.check.isVisible = selecting
             val on = doc.id in selected
             b.check.setImageResource(if (on) R.drawable.ic_check_circle else R.drawable.ic_circle_outline)
-            b.check.imageTintList = if (on) getColorStateList(R.color.accent) else null
+            b.check.imageTintList = if (on) android.content.res.ColorStateList.valueOf(themeColor(androidx.appcompat.R.attr.colorPrimary)) else null
         }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {

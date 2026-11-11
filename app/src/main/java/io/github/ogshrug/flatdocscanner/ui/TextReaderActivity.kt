@@ -48,7 +48,7 @@ class TextReaderActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivityTextReaderBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.padForSystemBars(top = true, bottom = true)

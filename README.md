@@ -4,11 +4,13 @@ An Android document and book scanner that works entirely on the phone. Point it 
 
 **Book mode** photographs an open book, finds the spine, splits the spread into two pages and flattens each curved page with an on-device neural network.
 
-No account, no upload, no ads. The app does not have internet permission.
+No account, no upload, no ads. Scans never leave the phone. The Play Store build has no internet permission at all; the build from GitHub uses the network for one thing, checking for and downloading its own updates.
 
 ## Install
 
 Download the latest APK from [Releases](https://github.com/ogshrug/FlatDocScanner/releases): `arm64` for almost every phone, `universal` if that one won't install. Needs Android 7.0 or later.
+
+From then on the app updates itself: once a day it asks GitHub whether a newer release exists and offers it, or use **Settings → Check for updates**. A download is installed only if its checksum matches GitHub's and it is signed with the same key as the app you have; Android then asks you to confirm. The daily check can be switched off in Settings.
 
 ## Features
 
@@ -36,6 +38,7 @@ Download the latest APK from [Releases](https://github.com/ogshrug/FlatDocScanne
 - **Pages**: grid or continuous reader view, drag to reorder, rotate, re-crop from the kept original photo, move between folders, set as cover, save to gallery.
 - **Full-screen viewer**: swipe between pages, pinch or double-tap to zoom.
 - **Trash**: deleted folders and pages can be restored for 30 days. Deleting happens at once with an Undo bar; pages return to their old place.
+- **Themes**: eight colour themes, each light or dark, or following the phone.
 - **Settings**: save scans to gallery, vibrate, two-page order (for right-to-left books), timer length, start in the camera, text language, storage used.
 
 ### Text and export
@@ -85,16 +88,18 @@ Corners are stored as fractions of the image size and the original photo is kept
 Requirements: Android Studio with JDK 17 or later (the bundled runtime works), Android SDK platform 37, and a device or emulator on Android 7.0 (API 24) or later.
 
 ```bash
-./gradlew :app:assembleDebug               # debug APK
-./gradlew :app:installDebug                # install on a connected device
-./gradlew :app:testDebugUnitTest           # unit tests: geometry, auto-capture, spine fit, gutter gains, text export
-./gradlew :app:lintDebug                   # Android lint
-./gradlew :app:connectedDebugAndroidTest   # on a device: detection, both models, OCR, PDF
+./gradlew :app:assembleGithubDebug               # debug APK
+./gradlew :app:installGithubDebug                # install on a connected device
+./gradlew :app:testGithubDebugUnitTest           # unit tests: geometry, auto-capture, spine fit, gutter gains, text export, updater
+./gradlew :app:lintGithubDebug                   # Android lint
+./gradlew :app:connectedGithubDebugAndroidTest   # on a device: detection, both models, OCR, PDF
 ```
+
+- There are two flavours of the app. `github` (above) includes the self-updater, and with it the internet and install-packages permissions. `play` has neither: Play delivers updates and forbids apps that update themselves. Swap `Github` for `Play` in any task name to build that one. The updater lives in `app/src/github`, a do-nothing stand-in in `app/src/play`.
 
 - Add `-PtargetAbi=arm64-v8a` (or `x86_64` for an emulator) to package one CPU type. Without it the APK carries native libraries for all four and is about 350 MB.
 - Debug builds use the package `io.github.ogshrug.flatdocscanner.debug`, so they install beside the release app.
-- Every push runs the unit tests, lint and a debug build on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
+- Every push runs the unit tests, lint for both flavours and a debug build on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
 - Release builds are shrunk with R8 and signed with a key kept outside git; see [RELEASING.md](RELEASING.md).
 
 To regenerate the flattening model:
@@ -125,6 +130,8 @@ python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
 ```
 app/src/main/java/io/github/ogshrug/flatdocscanner/
 ├── DocScannerApp.kt          Application: loads OpenCV, creates the repository
+├── AppTheme.kt               Colour themes and light/dark, applied to every screen
+├── update/UpdateFeature.kt   Self-updater (in app/src/github; a stub in app/src/play)
 ├── scan/
 │   ├── Quad.kt               Corner geometry: ordering, convexity, output size (pure Kotlin)
 │   ├── PageDetector.kt       Page detection: corner model, then classical fallback
@@ -173,6 +180,7 @@ app/src/main/assets/uvdoc.onnx   UVDoc model (16 MB), exported by tools/export_u
 app/src/main/assets/docaligner_lcnet100.onnx   DocAligner LCNet-100 corner model (2.4 MB), DocsaidLab's weights, halved
 tools/export_uvdoc_onnx.py       Re-exports the model and checks it against PyTorch
 tools/halve_model.py             Stores a model's weights as 16-bit floats (half the file, same computation)
+tools/make_themes.py             Generates the colour themes from Astryx's tokens
 ```
 
 </details>
@@ -191,11 +199,19 @@ tools/halve_model.py             Stores a model's weights as 16-bit floats (half
 
 **Tuning.** The auto-capture thresholds live in `AutoCapture.Config`: steady time, jitter, minimum coverage, sharpness, the re-arm triggers, the duplicate-page distance and the cooldown. The defaults are first estimates and should be tuned on real devices and books. The same goes for the spine valley depth in `SpineDetector`, the skin margins in `FingerRemover` and the gutter zone in `Gutter`.
 
-**Design.** Dark only: near-black surfaces with a faint teal cast and one teal accent (`#2DD4BF`), defined in `res/values/colors.xml`. The accent is kept for the main action, selection and the "ready" page outline.
+**Design.** Eight colour themes, each in light and dark, chosen in Settings (Theme and Appearance). Teal is the app's own and the default, in dark. Neutral, Stone, Butter, Chocolate, Matcha, Gothic and Y2K take their colours and corner radii from [Astryx](https://github.com/facebook/astryx), Meta's open-source design system: its background, text, accent and border roles map onto Material's colour roles, and its inner / element / container / page radii drive Material's shape scale. Astryx's typefaces are not bundled; themes with a serif heading face use the system serif for titles. The camera and the full-screen viewer always use a theme's dark colours.
+
+Themes are generated: `python tools/make_themes.py` writes `theme_colors.xml` (with a night copy) and `theme_overlays.xml`, and `AppTheme.kt` lays the chosen overlay over `Theme.DocScanner` on every screen. Layouts read colours through theme attributes (`?attr/colorPrimary`, `?attr/colorOnSurface`, `?attr/colorSurfaceContainer…`), never fixed colours.
 
 ## Privacy
 
-No account, analytics, ads or servers. The app has no internet permission: ML Kit's network permissions are removed in the manifest, so nothing can leave the device. Scans live in app-private storage; Android cloud backup includes settings only. Full policy: [PRIVACY.md](PRIVACY.md).
+No account, analytics, ads or servers. Scans live in app-private storage and are never uploaded; Android cloud backup includes settings only.
+
+- **Play Store build**: no internet permission, so nothing can leave the device.
+- **GitHub build**: has the internet permission for its updater, which makes two kinds of request, both to GitHub: "what is the latest release?" and the download of that release. Neither carries anything about you or your scans.
+- In both builds, the parts of ML Kit and ONNX Runtime that could report usage statistics are removed in the manifest.
+
+Full policy: [PRIVACY.md](PRIVACY.md).
 
 ## Roadmap
 

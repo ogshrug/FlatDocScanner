@@ -68,8 +68,8 @@ class CornerEditView @JvmOverloads constructor(
         strokeWidth = 1.5f * density
         color = Color.WHITE
     }
-    private val validColor = ContextCompat.getColor(context, R.color.accent)
-    private val invalidColor = ContextCompat.getColor(context, R.color.error)
+    private val validColor = context.themeColor(androidx.appcompat.R.attr.colorPrimary)
+    private val invalidColor = context.themeColor(androidx.appcompat.R.attr.colorError)
 
     fun setImage(bitmap: Bitmap, quad: Quad) {
         this.bitmap = bitmap

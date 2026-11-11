@@ -19,6 +19,7 @@ class DocScannerApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Themes.install(this)
         if (!OpenCVLoader.initLocal()) Log.e("DocScanner", "OpenCV failed to load")
         Dewarper.init(this)
         CornerModel.init(this)

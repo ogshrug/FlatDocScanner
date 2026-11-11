@@ -1,41 +1,62 @@
 <resources>
-    <!-- Dark only, whatever the system setting: teal on near-black. -->
-    <style name="Theme.DocScanner" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/accent</item>
-        <item name="colorOnPrimary">@color/on_accent</item>
-        <item name="colorPrimaryContainer">@color/accent_container</item>
-        <item name="colorOnPrimaryContainer">@color/on_accent_container</item>
-        <item name="colorSecondary">@color/accent</item>
-        <item name="colorOnSecondary">@color/on_accent</item>
-        <item name="colorSecondaryContainer">@color/accent_container</item>
-        <item name="colorOnSecondaryContainer">@color/on_accent_container</item>
-        <item name="colorTertiary">@color/accent_bright</item>
-        <item name="colorOnTertiary">@color/on_accent</item>
-        <item name="colorError">@color/error</item>
-        <item name="colorOnError">@color/on_error</item>
+    <!-- The base theme. Which colours it shows is decided at run time: see AppTheme.kt
+         and theme_overlays.xml. Light or dark follows the Appearance setting. -->
+    <style name="Theme.DocScanner" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Colours and corner radii: the Teal theme's, until AppTheme lays the chosen
+             theme's overlay on top. Listed here too so that the window shown while the app
+             starts already has them. -->
+        <item name="colorPrimary">@color/teal_accent</item>
+        <item name="colorOnPrimary">@color/teal_on_accent</item>
+        <item name="colorPrimaryContainer">@color/teal_accent_c</item>
+        <item name="colorOnPrimaryContainer">@color/teal_on_accent_c</item>
+        <item name="colorSecondary">@color/teal_accent</item>
+        <item name="colorOnSecondary">@color/teal_on_accent</item>
+        <item name="colorSecondaryContainer">@color/teal_accent_c</item>
+        <item name="colorOnSecondaryContainer">@color/teal_on_accent_c</item>
+        <item name="colorTertiary">@color/teal_accent_bright</item>
+        <item name="colorOnTertiary">@color/teal_on_accent</item>
+        <item name="colorError">@color/teal_error</item>
+        <item name="colorOnError">@color/teal_on_error</item>
+        <item name="android:colorBackground">@color/teal_bg</item>
+        <item name="colorOnBackground">@color/teal_text</item>
+        <item name="colorSurface">@color/teal_bg</item>
+        <item name="colorOnSurface">@color/teal_text</item>
+        <item name="colorSurfaceVariant">@color/teal_s_highest</item>
+        <item name="colorOnSurfaceVariant">@color/teal_text2</item>
+        <item name="colorTextMuted">@color/teal_text3</item>
+        <item name="colorSurfaceContainerLowest">@color/teal_s_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/teal_s_low</item>
+        <item name="colorSurfaceContainer">@color/teal_s</item>
+        <item name="colorSurfaceContainerHigh">@color/teal_s_high</item>
+        <item name="colorSurfaceContainerHighest">@color/teal_s_highest</item>
+        <item name="colorSurfaceInverse">@color/teal_text</item>
+        <item name="colorOnSurfaceInverse">@color/teal_bg</item>
+        <item name="colorPrimaryInverse">@color/teal_accent_c</item>
+        <item name="colorOutline">@color/teal_outline</item>
+        <item name="colorOutlineVariant">@color/teal_divider</item>
+        <item name="android:textColorHighlight">@color/teal_accent_c</item>
+        <item name="android:textColorPrimary">@color/teal_text</item>
+        <item name="android:textColorSecondary">@color/teal_text2</item>
+        <item name="android:textColorTertiary">@color/teal_text3</item>
+        <item name="android:textColorHint">@color/teal_text3</item>
+        <item name="radiusInner">8dp</item>
+        <item name="radiusElement">12dp</item>
+        <item name="radiusContainer">12dp</item>
+        <item name="radiusPage">28dp</item>
+        <item name="radiusFull">999dp</item>
+        <item name="headingFont">sans-serif</item>
 
-        <item name="android:colorBackground">@color/background</item>
-        <item name="colorOnBackground">@color/text_primary</item>
-        <item name="colorSurface">@color/background</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorSurfaceVariant">@color/surface_highest</item>
-        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        <item name="colorSurfaceContainerLowest">@color/surface_lowest</item>
-        <item name="colorSurfaceContainerLow">@color/surface_low</item>
-        <item name="colorSurfaceContainer">@color/surface</item>
-        <item name="colorSurfaceContainerHigh">@color/surface_high</item>
-        <item name="colorSurfaceContainerHighest">@color/surface_highest</item>
-        <item name="colorSurfaceInverse">@color/text_primary</item>
-        <item name="colorOnSurfaceInverse">@color/background</item>
-        <item name="colorPrimaryInverse">@color/accent_container</item>
-        <item name="colorOutline">@color/outline</item>
-        <item name="colorOutlineVariant">@color/divider</item>
+        <!-- Resolved after the overlay, so the window takes the chosen theme's background. -->
+        <item name="android:windowBackground">?android:attr/colorBackground</item>
 
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:textColorHighlight">@color/accent_container</item>
+        <!-- Material's shape scale, driven by the theme's radii. -->
+        <item name="shapeAppearanceCornerExtraSmall">@style/ShapeAppearance.DocScanner.Inner</item>
+        <item name="shapeAppearanceCornerSmall">@style/ShapeAppearance.DocScanner.Element</item>
+        <item name="shapeAppearanceCornerMedium">@style/ShapeAppearance.DocScanner.Container</item>
+        <item name="shapeAppearanceCornerLarge">@style/ShapeAppearance.DocScanner.Container</item>
+        <item name="shapeAppearanceCornerExtraLarge">@style/ShapeAppearance.DocScanner.Page</item>
 
-        <!-- Main actions are solid accent with dark text. -->
+        <!-- Main actions are solid accent. -->
         <item name="floatingActionButtonStyle">@style/Widget.DocScanner.Fab</item>
         <item name="extendedFloatingActionButtonStyle">@style/Widget.DocScanner.ExtendedFab</item>
         <item name="toolbarStyle">@style/Widget.DocScanner.Toolbar</item>
@@ -43,6 +64,22 @@
         <item name="snackbarStyle">@style/Widget.DocScanner.Snackbar</item>
         <item name="snackbarButtonStyle">@style/Widget.DocScanner.SnackbarButton</item>
         <item name="snackbarTextViewStyle">@style/Widget.DocScanner.SnackbarText</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Inner" parent="ShapeAppearance.Material3.Corner.ExtraSmall">
+        <item name="cornerSize">?attr/radiusInner</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Element" parent="ShapeAppearance.Material3.Corner.Small">
+        <item name="cornerSize">?attr/radiusElement</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Container" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">?attr/radiusContainer</item>
+    </style>
+
+    <style name="ShapeAppearance.DocScanner.Page" parent="ShapeAppearance.Material3.Corner.ExtraLarge">
+        <item name="cornerSize">?attr/radiusPage</item>
     </style>
 
     <!-- Sheets run down behind the navigation bar instead of stopping above it. -->
@@ -59,35 +96,37 @@
     <style name="TextAppearance.DocScanner.ToolbarTitle" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textStyle">bold</item>
         <item name="android:letterSpacing">-0.01</item>
+        <item name="android:fontFamily">?attr/headingFont</item>
+        <item name="fontFamily">?attr/headingFont</item>
     </style>
 
     <!-- Material 3 "primary" FABs use the muted container colour; ours are solid accent. -->
     <style name="Widget.DocScanner.Fab" parent="Widget.Material3.FloatingActionButton.Primary">
-        <item name="backgroundTint">@color/accent</item>
-        <item name="tint">@color/on_accent</item>
-        <item name="rippleColor">@color/accent_bright</item>
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="tint">?attr/colorOnPrimary</item>
+        <item name="rippleColor">?attr/colorTertiary</item>
     </style>
 
     <style name="Widget.DocScanner.ExtendedFab" parent="Widget.Material3.ExtendedFloatingActionButton.Icon.Primary">
-        <item name="backgroundTint">@color/accent</item>
-        <item name="android:textColor">@color/on_accent</item>
-        <item name="iconTint">@color/on_accent</item>
-        <item name="rippleColor">@color/accent_bright</item>
+        <item name="backgroundTint">?attr/colorPrimary</item>
+        <item name="android:textColor">?attr/colorOnPrimary</item>
+        <item name="iconTint">?attr/colorOnPrimary</item>
+        <item name="rippleColor">?attr/colorTertiary</item>
         <item name="shapeAppearanceOverlay">@style/ShapeAppearance.DocScanner.Circle</item>
     </style>
 
     <!-- Undo and confirmations: a raised dark card, not the default light inverse surface. -->
     <style name="Widget.DocScanner.Snackbar" parent="Widget.Material3.Snackbar">
-        <item name="backgroundTint">@color/surface_highest</item>
+        <item name="backgroundTint">?attr/colorSurfaceContainerHighest</item>
         <item name="actionTextColorAlpha">1</item>
     </style>
 
     <style name="Widget.DocScanner.SnackbarText" parent="Widget.Material3.Snackbar.TextView">
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
     </style>
 
     <style name="Widget.DocScanner.SnackbarButton" parent="Widget.Material3.Button.TextButton.Snackbar">
-        <item name="android:textColor">@color/accent</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
     </style>
 
     <style name="Widget.DocScanner.SheetLabel" parent="">
@@ -128,14 +167,15 @@
         <item name="drawableTint">@color/camera_option_tint</item>
     </style>
 
+    <!-- A pill in most themes; square where the theme has no rounding at all. -->
     <style name="ShapeAppearance.DocScanner.Circle" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">50%</item>
+        <item name="cornerSize">?attr/radiusFull</item>
     </style>
 
     <style name="ShapeAppearance.DocScanner.Thumb" parent="">
         <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">8dp</item>
+        <item name="cornerSize">?attr/radiusInner</item>
     </style>
 
     <style name="Theme.DocScanner.Camera">

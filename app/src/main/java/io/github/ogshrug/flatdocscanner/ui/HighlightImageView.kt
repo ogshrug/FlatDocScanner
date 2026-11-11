@@ -36,7 +36,7 @@ class HighlightImageView @JvmOverloads constructor(
         }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ColorUtils.setAlphaComponent(ContextCompat.getColor(context, R.color.accent), 110)
+        color = ColorUtils.setAlphaComponent(context.themeColor(androidx.appcompat.R.attr.colorPrimary), 110)
     }
     private val content = RectF()
     private val mark = RectF()

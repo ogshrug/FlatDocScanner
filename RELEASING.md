@@ -23,7 +23,7 @@ To use the key on another computer, copy both files to the same places.
    make the repository public and link to the file) and paste the URL.
 4. **Data safety** form, from what the app actually does:
    - Does the app collect or share user data? **No.**
-   - (The app has no internet permission; everything runs on the device.)
+   - (The Play build, flavour `play`, has no internet permission; everything runs on the device.)
 5. **App access**: all functionality is available without special access or login.
 6. **Ads**: no ads.
 7. **Content rating**: questionnaire answers are all "no" (utility app, no user-generated
@@ -38,37 +38,42 @@ To use the key on another computer, copy both files to the same places.
 1. Bump `versionCode` (must increase every upload) and `versionName` in `app/build.gradle.kts`.
 2. Run the checks (CI runs the first line on every push; the device tests are local only):
    ```bash
-   ./gradlew :app:testDebugUnitTest :app:lintRelease
-   ./gradlew :app:connectedDebugAndroidTest      # with a phone or emulator connected
+   ./gradlew :app:testGithubDebugUnitTest :app:lintGithubRelease :app:lintPlayRelease
+   ./gradlew :app:connectedGithubDebugAndroidTest      # with a phone or emulator connected
    ```
 3. Build the bundle:
    ```bash
-   ./gradlew :app:bundleRelease
+   ./gradlew :app:bundlePlayRelease
    ```
-   Output: `app/build/outputs/bundle/release/app-release.aab`.
+   Output: `app/build/outputs/bundle/playRelease/app-play-release.aab`.
 4. **Smoke-test the release build on a real phone before uploading.** R8 shrinking can break
    libraries that are only used by name (it broke ML Kit text recognition once; the keep
    rules are in `app/src/main/keepRules/rules.keep`). At minimum: scan a page, book mode,
    curved page, recognise text, export a PDF.
    ```bash
-   ./gradlew :app:assembleRelease
-   adb install -r app/build/outputs/apk/release/app-release.apk
+   ./gradlew :app:assemblePlayRelease
+   adb install -r app/build/outputs/apk/play/release/app-play-release.apk
    ```
-5. Keep `app/build/outputs/mapping/release/mapping.txt` for each release: it turns crash
+5. Keep `app/build/outputs/mapping/playRelease/mapping.txt (and `githubRelease/`)` for each release: it turns crash
    stack traces from users back into readable code (Play Console accepts it as the
    deobfuscation file).
 6. Upload the `.aab` to a testing track first (internal testing), then promote.
 
 ## GitHub release
 
-For people installing outside Play, attach APKs to a GitHub release:
+For people installing outside Play, attach APKs to a GitHub release. Use the `github` flavour: it is the one with the self-updater, and installed copies find the new release through it.
+
+The updater depends on three things staying as they are:
+- the tag is `v` plus the version name (`v1.3.0`), and the release is neither a draft nor a pre-release;
+- the APK names contain `arm64` and `universal`;
+- the APKs are signed with the same key as before, with a higher `versionCode`. Anything else is refused on the phone.
 
 ```bash
-./gradlew :app:assembleRelease -PtargetAbi=arm64-v8a   # most phones
-./gradlew :app:assembleRelease                          # universal: all four CPU types
+./gradlew :app:assembleGithubRelease -PtargetAbi=arm64-v8a   # most phones
+./gradlew :app:assembleGithubRelease                          # universal: all four CPU types
 gh release create v1.2.0 --title "FlatDocScanner 1.2.0" --notes-file notes.md \
     flatdocscanner-1.2.0-arm64.apk flatdocscanner-1.2.0-universal.apk
 ```
 
-Both commands write `app/build/outputs/apk/release/app-release.apk`, so copy and rename the
+Both commands write `app/build/outputs/apk/github/release/app-github-release.apk`, so copy and rename the
 first before running the second. Wait for the CI run on `main` to pass before tagging.

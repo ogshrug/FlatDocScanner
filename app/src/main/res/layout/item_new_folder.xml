@@ -20,7 +20,7 @@
             android:layout_gravity="center"
             android:importantForAccessibility="no"
             android:src="@drawable/ic_new_folder"
-            app:tint="@color/accent" />
+            app:tint="?attr/colorPrimary" />
     </FrameLayout>
 
     <TextView

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Set by every theme overlay (theme_overlays.xml), on top of Material's colour roles. -->
+    <attr name="colorTextMuted" format="color" />
+    <!-- Corner radii, after Astryx's scale: inner (thumbnails, chips), element (buttons,
+         fields), container (cards, covers), page (sheets, dialogs), full (pills). -->
+    <attr name="radiusInner" format="dimension" />
+    <attr name="radiusElement" format="dimension" />
+    <attr name="radiusContainer" format="dimension" />
+    <attr name="radiusPage" format="dimension" />
+    <attr name="radiusFull" format="dimension" />
+    <!-- Font family for screen titles. -->
+    <attr name="headingFont" format="string" />
+</resources>

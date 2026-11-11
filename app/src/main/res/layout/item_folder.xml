@@ -27,7 +27,7 @@
             android:layout_gravity="center"
             android:importantForAccessibility="no"
             android:src="@drawable/ic_folder"
-            app:tint="@color/text_muted" />
+            app:tint="?attr/colorTextMuted" />
 
         <ImageView
             android:id="@+id/check"

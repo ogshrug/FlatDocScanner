@@ -1,6 +1,7 @@
 package io.github.ogshrug.flatdocscanner.ui
 
 import android.animation.ObjectAnimator
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.os.SystemClock
@@ -11,12 +12,15 @@ import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.AttrRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.snackbar.Snackbar
 import io.github.ogshrug.flatdocscanner.R
 import io.github.ogshrug.flatdocscanner.util.Bitmaps
@@ -27,15 +31,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/** A colour of the theme this context is showing, e.g. `androidx.appcompat.R.attr.colorPrimary`. */
+fun Context.themeColor(@AttrRes attr: Int): Int = MaterialColors.getColor(this, attr, Color.MAGENTA)
+
 /**
- * Edge-to-edge with light status and navigation bar icons. The app is always dark, so the
- * bars must not follow the system's light theme (which would draw dark icons on our background).
+ * Edge-to-edge, with status and navigation bar icons that suit the theme: light icons over a
+ * dark background and dark over a light one, whatever the system's own setting.
  */
-fun ComponentActivity.enableDarkEdgeToEdge() {
-    enableEdgeToEdge(
-        statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-    )
+fun ComponentActivity.enableAppEdgeToEdge() {
+    val dark = ColorUtils.calculateLuminance(themeColor(android.R.attr.colorBackground)) < 0.5
+    val style = if (dark) SystemBarStyle.dark(Color.TRANSPARENT)
+    else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+    enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
 }
 
 /** How long an Undo bar stays up: long enough to read it and reach the button. */

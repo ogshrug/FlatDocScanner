@@ -1,19 +1,31 @@
 package io.github.ogshrug.flatdocscanner.ui
 
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Bundle
 import android.text.format.Formatter
+import android.util.TypedValue
+import android.view.ContextThemeWrapper
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import io.github.ogshrug.flatdocscanner.AppSettings
+import io.github.ogshrug.flatdocscanner.AppTheme
+import io.github.ogshrug.flatdocscanner.Appearance
 import io.github.ogshrug.flatdocscanner.BuildConfig
 import io.github.ogshrug.flatdocscanner.R
+import io.github.ogshrug.flatdocscanner.Themes
 import io.github.ogshrug.flatdocscanner.databinding.ActivitySettingsBinding
 import io.github.ogshrug.flatdocscanner.databinding.ItemSettingBinding
 import io.github.ogshrug.flatdocscanner.ocr.OcrSettings
 import io.github.ogshrug.flatdocscanner.ocr.Script
 import io.github.ogshrug.flatdocscanner.settings
+import io.github.ogshrug.flatdocscanner.update.UpdateFeature
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -28,7 +40,7 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivitySettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.root.padForSystemBars(top = true, bottom = true)
@@ -47,6 +59,14 @@ class SettingsActivity : AppCompatActivity() {
             R.string.settings_timer,
             AppSettings.TIMER_CHOICES.map { it to resources.getQuantityString(R.plurals.settings_timer_value, it, it) },
             { prefs.timerSeconds }, { prefs.timerSeconds = it },
+        )
+
+        section(R.string.settings_look)
+        themeRow()
+        choice(
+            R.string.settings_appearance,
+            Appearance.entries.map { it to getString(it.label) },
+            { prefs.appearance }, { Themes.setAppearance(this, it) },
         )
 
         section(R.string.settings_app)
@@ -69,6 +89,7 @@ class SettingsActivity : AppCompatActivity() {
 
         section(R.string.settings_about)
         value(row(R.string.settings_version), BuildConfig.VERSION_NAME)
+        if (UpdateFeature.AVAILABLE) UpdateFeature.addToSettings(this, binding.rows)
         row(R.string.settings_licenses).root.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.settings_licenses)
@@ -78,11 +99,63 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
+    /** The theme row: opens a list of the themes, each with a swatch of its own colours. */
+    private fun themeRow() {
+        val b = row(R.string.settings_theme)
+        value(b, getString(prefs.theme.label))
+        b.root.setOnClickListener {
+            val d = resources.displayMetrics.density
+            val list = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(0, (8 * d).toInt(), 0, 0)
+            }
+            val dialog = MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.settings_theme)
+                .setView(ScrollView(this).apply { addView(list) })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+            val ripple = TypedValue().also { theme.resolveAttribute(android.R.attr.selectableItemBackground, it, true) }
+            AppTheme.entries.forEach { option ->
+                // The option's own colours, in the light or dark this screen is showing.
+                val themed = ContextThemeWrapper(this, option.overlay)
+                val swatch = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(themed.themeColor(androidx.appcompat.R.attr.colorPrimary))
+                    setStroke((5 * d).toInt(), themed.themeColor(android.R.attr.colorBackground))
+                }
+                val ring = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(themed.themeColor(com.google.android.material.R.attr.colorOutline))
+                }
+                val icon = LayerDrawable(arrayOf(ring, swatch)).apply {
+                    val inset = (1 * d).toInt()
+                    setLayerInset(1, inset, inset, inset, inset)
+                    setBounds(0, 0, (30 * d).toInt(), (30 * d).toInt())
+                }
+                list.addView(TextView(this).apply {
+                    setText(option.label)
+                    setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+                    if (option == prefs.theme) setTypeface(typeface, Typeface.BOLD)
+                    gravity = Gravity.CENTER_VERTICAL
+                    setCompoundDrawablesRelative(icon, null, null, null)
+                    compoundDrawablePadding = (16 * d).toInt()
+                    setPadding((24 * d).toInt(), (12 * d).toInt(), (24 * d).toInt(), (12 * d).toInt())
+                    setBackgroundResource(ripple.resourceId)
+                    setOnClickListener {
+                        dialog.dismiss()
+                        if (option != prefs.theme) Themes.setTheme(this@SettingsActivity, option)
+                    }
+                })
+            }
+            dialog.show()
+        }
+    }
+
     private fun section(title: Int) {
         binding.rows.addView(TextView(this).apply {
             setText(title)
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
-            setTextColor(getColor(R.color.accent))
+            setTextColor(themeColor(androidx.appcompat.R.attr.colorPrimary))
             val pad = (20 * resources.displayMetrics.density).toInt()
             setPadding(pad, pad, pad, pad / 3)
         })
@@ -91,6 +164,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun row(title: Int, summary: Int? = null): ItemSettingBinding {
         val b = ItemSettingBinding.inflate(layoutInflater, binding.rows, true)
         b.title.setText(title)
+        // Every row's switch has the same view id, so Android's own state restore (after a
+        // theme change re-creates the screen) would give them all the last row's state.
+        // The settings are the source of truth; nothing here needs restoring.
+        b.toggle.isSaveEnabled = false
         if (summary != null) {
             b.summary.setText(summary)
             b.summary.isVisible = true

@@ -13,6 +13,12 @@ The app also ships the models and libraries below, each under its own licence.
 The licence texts ship inside the app as `assets/uvdoc_LICENSE.txt` and
 `assets/docaligner_LICENSE.txt`.
 
+## Design
+
+| Source | Used for | Licence |
+|---|---|---|
+| [Astryx](https://github.com/facebook/astryx) | Colour and corner-radius tokens of seven of the app's themes (`tools/make_themes.py`), taken from the `@astryxdesign/theme-*` packages, version 0.7.12. No Astryx code or typeface is included. | MIT, © Meta Platforms, Inc. and affiliates |
+
 ## Libraries in the app
 
 | Library | Licence |
@@ -37,7 +43,7 @@ Gradle Plugin and KSP (Apache 2.0). None of these is part of the installed app.
 
 The Apache License 2.0 is reproduced in [LICENSE](LICENSE).
 
-### MIT License (UVDoc, ONNX Runtime)
+### MIT License (UVDoc, ONNX Runtime, Astryx)
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy

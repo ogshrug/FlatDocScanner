@@ -37,6 +37,26 @@ class AppSettings(context: Context) {
         get() = runCatching { LibrarySort.valueOf(prefs.getString(KEY_SORT, null)!!) }.getOrDefault(LibrarySort.MODIFIED)
         set(v) = prefs.edit { putString(KEY_SORT, v.name) }
 
+    /** Colour theme. */
+    var theme: AppTheme
+        get() = AppTheme.of(prefs.getString(KEY_THEME, null))
+        set(v) = prefs.edit { putString(KEY_THEME, v.key) }
+
+    /** Light, dark or following the phone. Dark unless chosen otherwise. */
+    var appearance: Appearance
+        get() = Appearance.of(prefs.getString(KEY_APPEARANCE, null))
+        set(v) = prefs.edit { putString(KEY_APPEARANCE, v.key) }
+
+    /** GitHub build: look for a newer version once a day without being asked. */
+    var autoUpdateCheck: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_UPDATE, true)
+        set(v) = prefs.edit { putBoolean(KEY_AUTO_UPDATE, v) }
+
+    /** When the last automatic update check ran, in epoch milliseconds. */
+    var lastUpdateCheck: Long
+        get() = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0L)
+        set(v) = prefs.edit { putLong(KEY_LAST_UPDATE_CHECK, v) }
+
     enum class LibrarySort { MODIFIED, CREATED, NAME }
 
     companion object {
@@ -48,6 +68,10 @@ class AppSettings(context: Context) {
         private const val KEY_TIMER = "timer_seconds"
         private const val KEY_START_CAMERA = "start_in_camera"
         private const val KEY_SORT = "library_sort"
+        private const val KEY_AUTO_UPDATE = "auto_update_check"
+        private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
+        private const val KEY_THEME = "theme"
+        private const val KEY_APPEARANCE = "appearance"
     }
 }
 

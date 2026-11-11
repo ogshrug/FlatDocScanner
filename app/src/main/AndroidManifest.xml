@@ -10,11 +10,10 @@
 
     <!--
         Everything runs on the phone. ML Kit adds network permissions only to send Google
-        usage statistics; removing them keeps every scan and all text strictly on the device.
+        usage statistics. The Play build removes INTERNET altogether (src/play); the GitHub
+        build keeps it for its updater (src/github), so the parts of ML Kit and ONNX Runtime
+        that would report statistics are removed below for every build.
     -->
-    <uses-permission
-        android:name="android.permission.INTERNET"
-        tools:node="remove" />
     <uses-permission
         android:name="android.permission.ACCESS_NETWORK_STATE"
         tools:node="remove" />
@@ -104,6 +103,23 @@
             android:name=".ui.PageViewerActivity"
             android:exported="false"
             android:theme="@style/Theme.DocScanner.Camera" />
+
+        <!-- Usage-statistics senders pulled in by ML Kit (Google's data transport). -->
+        <service
+            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+            tools:node="remove" />
+        <service
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService"
+            tools:node="remove" />
+        <receiver
+            android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
+            tools:node="remove" />
+
+        <!-- ONNX Runtime's telemetry start-up hook. -->
+        <provider
+            android:name="ai.onnxruntime.TelemetryInitializer"
+            android:authorities="${applicationId}.onnxruntime_telemetry_initializer"
+            tools:node="remove" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

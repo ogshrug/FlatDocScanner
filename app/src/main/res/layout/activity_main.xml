@@ -45,7 +45,7 @@
             android:importantForAccessibility="no"
             android:padding="24dp"
             android:src="@drawable/ic_camera"
-            app:tint="@color/accent" />
+            app:tint="?attr/colorPrimary" />
 
         <TextView
             android:layout_width="wrap_content"

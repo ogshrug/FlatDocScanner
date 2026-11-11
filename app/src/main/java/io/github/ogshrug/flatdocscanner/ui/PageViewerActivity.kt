@@ -45,8 +45,10 @@ class PageViewerActivity : AppCompatActivity() {
     private val cache = LruCache<String, Bitmap>(5)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Always the dark colours: this screen is a black stage for the picture.
+        delegate.localNightMode = androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivityPageViewerBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.toolbar.padForSystemBars(top = true)

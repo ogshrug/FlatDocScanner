@@ -2,6 +2,6 @@
 <!-- Camera options are white, or the accent colour when switched on. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="#52FFFFFF" android:state_enabled="false" />
-    <item android:color="@color/accent" android:state_activated="true" />
+    <item android:color="?attr/colorPrimary" android:state_activated="true" />
     <item android:color="@android:color/white" />
 </selector>

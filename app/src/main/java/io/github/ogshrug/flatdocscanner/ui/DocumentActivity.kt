@@ -85,7 +85,7 @@ class DocumentActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableDarkEdgeToEdge()
+        enableAppEdgeToEdge()
         binding = ActivityDocumentBinding.inflate(layoutInflater)
         setContentView(binding.root)
         onBackPressedDispatcher.addCallback(this, exitSelection)
@@ -546,7 +546,7 @@ class DocumentActivity : AppCompatActivity() {
             holder.check.isVisible = selecting
             val on = page.id in selected
             holder.check.setImageResource(if (on) R.drawable.ic_check_circle else R.drawable.ic_circle_outline)
-            holder.check.imageTintList = if (on) getColorStateList(R.color.accent) else null
+            holder.check.imageTintList = if (on) android.content.res.ColorStateList.valueOf(themeColor(androidx.appcompat.R.attr.colorPrimary)) else null
             (holder.b.root as com.google.android.material.card.MaterialCardView).isChecked = selecting && on
         }
 

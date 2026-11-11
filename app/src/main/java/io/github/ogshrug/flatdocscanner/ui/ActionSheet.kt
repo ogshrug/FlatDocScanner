@@ -42,11 +42,11 @@ object ActionSheet {
             activity.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, it, true)
         }
         actions.forEach { a ->
-            val color = activity.getColor(
+            val color = activity.themeColor(
                 when {
-                    !a.enabled -> R.color.text_muted
-                    a.destructive -> R.color.error
-                    else -> R.color.text_primary
+                    !a.enabled -> R.attr.colorTextMuted
+                    a.destructive -> androidx.appcompat.R.attr.colorError
+                    else -> com.google.android.material.R.attr.colorOnSurface
                 },
             )
             grid.addView(TextView(activity).apply {
