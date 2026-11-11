@@ -38,21 +38,21 @@ To use the key on another computer, copy both files to the same places.
 1. Bump `versionCode` (must increase every upload) and `versionName` in `app/build.gradle.kts`.
 2. Run the checks (CI runs the first line on every push; the device tests are local only):
    ```bash
-   ./gradlew :app:testGithubDebugUnitTest :app:lintGithubRelease :app:lintPlayRelease
-   ./gradlew :app:connectedGithubDebugAndroidTest      # with a phone or emulator connected
+   ./gradlew :app:testGithubOnnxDebugUnitTest :app:testGithubFerriteDebugUnitTest :app:lintGithubOnnxRelease :app:lintGithubFerriteRelease :app:lintPlayOnnxRelease
+   ./gradlew :app:connectedGithubOnnxDebugAndroidTest      # with a phone or emulator connected
    ```
 3. Build the bundle:
    ```bash
-   ./gradlew :app:bundlePlayRelease
+   ./gradlew :app:bundlePlayOnnxRelease
    ```
-   Output: `app/build/outputs/bundle/playRelease/app-play-release.aab`.
+   Output: `app/build/outputs/bundle/playOnnxRelease/app-play-onnx-release.aab`.
 4. **Smoke-test the release build on a real phone before uploading.** R8 shrinking can break
    libraries that are only used by name (it broke ML Kit text recognition once; the keep
    rules are in `app/src/main/keepRules/rules.keep`). At minimum: scan a page, book mode,
    curved page, recognise text, export a PDF.
    ```bash
-   ./gradlew :app:assemblePlayRelease
-   adb install -r app/build/outputs/apk/play/release/app-play-release.apk
+   ./gradlew :app:assemblePlayOnnxRelease
+   adb install -r app/build/outputs/apk/playOnnx/release/app-play-onnx-release.apk
    ```
 5. Keep `app/build/outputs/mapping/playRelease/mapping.txt (and `githubRelease/`)` for each release: it turns crash
    stack traces from users back into readable code (Play Console accepts it as the
@@ -65,15 +65,17 @@ For people installing outside Play, attach APKs to a GitHub release. Use the `gi
 
 The updater depends on three things staying as they are:
 - the tag is `v` plus the version name (`v1.3.0`), and the release is neither a draft nor a pre-release;
-- the APK names contain `arm64` and `universal`;
+- the APK names contain `arm64` and `universal`, and the Ferrite build's also contain `ferrite` (each build only takes updates from its own engine's files);
 - the APKs are signed with the same key as before, with a higher `versionCode`. Anything else is refused on the phone.
 
 ```bash
-./gradlew :app:assembleGithubRelease -PtargetAbi=arm64-v8a   # most phones
-./gradlew :app:assembleGithubRelease                          # universal: all four CPU types
+./gradlew :app:assembleGithubOnnxRelease -PtargetAbi=arm64-v8a      # most phones
+./gradlew :app:assembleGithubFerriteRelease -PtargetAbi=arm64-v8a   # the Ferrite build
+./gradlew :app:assembleGithubOnnxRelease                          # universal: all four CPU types
+./gradlew :app:assembleGithubFerriteRelease
 gh release create v1.2.0 --title "FlatDocScanner 1.2.0" --notes-file notes.md \
     flatdocscanner-1.2.0-arm64.apk flatdocscanner-1.2.0-universal.apk
 ```
 
-Both commands write `app/build/outputs/apk/github/release/app-github-release.apk`, so copy and rename the
+Each command writes `app/build/outputs/apk/<variant>/release/app-<variant>-release.apk`, so copy and rename the
 first before running the second. Wait for the CI run on `main` to pass before tagging.

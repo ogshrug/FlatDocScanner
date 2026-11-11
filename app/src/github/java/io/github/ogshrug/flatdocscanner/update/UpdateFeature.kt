@@ -155,8 +155,14 @@ object UpdateFeature {
         }
     }
 
-    /** The APK built for this phone's CPU, else the one that carries every CPU type. */
-    private fun pickAsset(apks: List<Asset>): Asset? {
+    /**
+     * The APK built for this phone's CPU, else the one that carries every CPU type, from
+     * the set built with the same engine as this app (Ferrite builds carry "ferrite" in
+     * their file names).
+     */
+    private fun pickAsset(all: List<Asset>): Asset? {
+        val ferrite = BuildConfig.ENGINE == "ferrite"
+        val apks = all.filter { ("ferrite" in it.name) == ferrite }
         val wanted = when (Build.SUPPORTED_ABIS.firstOrNull()) {
             "arm64-v8a" -> "arm64"
             else -> "universal"

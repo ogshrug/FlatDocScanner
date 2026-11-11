@@ -12,9 +12,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Ferrite (the "ferrite" engine) is a submodule built with the NDK.
+          submodules: true
 
       - uses: actions/setup-java@v4
         with:
@@ -23,10 +26,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # One CPU type keeps the debug APK (and the run) small; the Kotlin and resources
-      # are the same for all of them.
-      - name: Unit tests, lint and debug build
-        run: sh ./gradlew :app:testGithubDebugUnitTest :app:testPlayDebugUnitTest :app:lintGithubDebug :app:lintPlayDebug :app:assembleGithubDebug :app:assemblePlayDebug -PtargetAbi=arm64-v8a --stacktrace
+      # Variants are channel (github / play) x engine (onnx / ferrite). One CPU type keeps
+      # the APKs (and the run) small; arm64 also compiles Ferrite's NEON kernels.
+      - name: Unit tests, lint and debug builds
+        run: >
+          sh ./gradlew
+          :app:testGithubOnnxDebugUnitTest :app:testGithubFerriteDebugUnitTest :app:testPlayOnnxDebugUnitTest
+          :app:lintGithubOnnxDebug :app:lintGithubFerriteDebug :app:lintPlayOnnxDebug
+          :app:assembleGithubOnnxDebug :app:assembleGithubFerriteDebug :app:assemblePlayOnnxDebug :app:assemblePlayFerriteDebug
+          -PtargetAbi=arm64-v8a --stacktrace
 
       - name: Keep the reports if something failed
         if: failure()

@@ -11,8 +11,8 @@
     <!--
         Everything runs on the phone. ML Kit adds network permissions only to send Google
         usage statistics. The Play build removes INTERNET altogether (src/play); the GitHub
-        build keeps it for its updater (src/github), so the parts of ML Kit and ONNX Runtime
-        that would report statistics are removed below for every build.
+        build keeps it for its updater (src/github), so the parts of ML Kit that would report
+        statistics are removed below for every build (ONNX Runtime's, in src/onnx).
     -->
     <uses-permission
         android:name="android.permission.ACCESS_NETWORK_STATE"
@@ -113,12 +113,6 @@
             tools:node="remove" />
         <receiver
             android:name="com.google.android.datatransport.runtime.scheduling.jobscheduling.AlarmManagerSchedulerBroadcastReceiver"
-            tools:node="remove" />
-
-        <!-- ONNX Runtime's telemetry start-up hook. -->
-        <provider
-            android:name="ai.onnxruntime.TelemetryInitializer"
-            android:authorities="${applicationId}.onnxruntime_telemetry_initializer"
             tools:node="remove" />
 
         <provider

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Ferrite build installs beside the normal app, so it needs its own name. -->
+    <string name="app_name">FlatDoc Ferrite</string>
+</resources>

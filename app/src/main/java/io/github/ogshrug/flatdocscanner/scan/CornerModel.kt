@@ -1,8 +1,5 @@
 package io.github.ogshrug.flatdocscanner.scan
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.content.Context
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -13,8 +10,8 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 /**
- * Learned page-corner detector: DocAligner LCNet-100 (Apache-2.0, DocsaidLab), 4.8 MB, run with
- * ONNX Runtime. The model sees the photo squashed to 256×256 and outputs one 128×128 heatmap
+ * Learned page-corner detector: DocAligner LCNet-100 (Apache-2.0, DocsaidLab), run with
+ * ONNX Runtime or Ferrite (see ModelEngine). The model sees the photo squashed to 256×256 and outputs one 128×128 heatmap
  * per corner (TL, TR, BR, BL). Each corner is the weighted centre of the blob around that
  * heatmap's peak; one weak corner is completed from the other three.
  */
@@ -29,8 +26,7 @@ object CornerModel {
     private const val STRONG_PEAK = 0.3f
 
     private lateinit var appContext: Context
-    private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
-    private val session: OrtSession by lazy { ModelAssets.session(appContext, MODEL_ASSET, threads = 2) }
+    private val model: ModelRunner by lazy { ModelEngine.open(appContext, MODEL_ASSET, threads = 2) }
 
     // Working memory, reused for every frame: the live preview calls detect() many times a
     // second, and allocating half a megabyte each time keeps the garbage collector busy.
@@ -39,7 +35,8 @@ object CornerModel {
     private val pixels = ByteArray(IN * IN * 3)
     private val input: FloatBuffer =
         ByteBuffer.allocateDirect(3 * IN * IN * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
-    private val inputShape = longArrayOf(1, 3, IN.toLong(), IN.toLong())
+    private val inputShape = intArrayOf(1, 3, IN, IN)
+    private val outputShape = intArrayOf(1, 4, HM_I, HM_I)
     private val heat = FloatArray(4 * HM_I * HM_I)
     private val maskBytes = ByteArray(HM_I * HM_I)
     private val labelValues = IntArray(HM_I * HM_I)
@@ -50,7 +47,7 @@ object CornerModel {
 
     /** Loads the model now (call off the main thread), so the camera's first frame isn't held up. */
     fun warmUp() {
-        runCatching { session }
+        runCatching { model }
     }
 
     /** Finds the page in an RGBA image; returns its corners in that image's pixels, or null. */
@@ -83,18 +80,14 @@ object CornerModel {
         Imgproc.resize(bgr, bgr, Size(IN.toDouble(), IN.toDouble()), 0.0, 0.0, Imgproc.INTER_AREA)
         bgr.get(0, 0, pixels)
         val plane = IN * IN
-        // Written straight into native memory, which ONNX Runtime reads without another copy.
+        // Written straight into native memory, which either engine reads without another copy.
         for (i in 0 until plane) {
             input.put(i, (pixels[i * 3].toInt() and 0xFF) / 255f)
             input.put(plane + i, (pixels[i * 3 + 1].toInt() and 0xFF) / 255f)
             input.put(2 * plane + i, (pixels[i * 3 + 2].toInt() and 0xFF) / 255f)
         }
         input.rewind()
-        OnnxTensor.createTensor(env, input, inputShape).use { tensor ->
-            session.run(mapOf("img" to tensor)).use { result ->
-                (result[0] as OnnxTensor).floatBuffer.get(heat)
-            }
-        }
+        model.run(input, inputShape, heat, outputShape)
     }
 
     /**

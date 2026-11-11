@@ -24,6 +24,7 @@ import io.github.ogshrug.flatdocscanner.databinding.ActivitySettingsBinding
 import io.github.ogshrug.flatdocscanner.databinding.ItemSettingBinding
 import io.github.ogshrug.flatdocscanner.ocr.OcrSettings
 import io.github.ogshrug.flatdocscanner.ocr.Script
+import io.github.ogshrug.flatdocscanner.scan.ModelEngine
 import io.github.ogshrug.flatdocscanner.settings
 import io.github.ogshrug.flatdocscanner.update.UpdateFeature
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -89,6 +90,7 @@ class SettingsActivity : AppCompatActivity() {
 
         section(R.string.settings_about)
         value(row(R.string.settings_version), BuildConfig.VERSION_NAME)
+        value(row(R.string.settings_engine), ModelEngine.NAME)
         if (UpdateFeature.AVAILABLE) UpdateFeature.addToSettings(this, binding.rows)
         row(R.string.settings_licenses).root.setOnClickListener {
             MaterialAlertDialogBuilder(this)

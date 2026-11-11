@@ -25,6 +25,7 @@ The licence texts ship inside the app as `assets/uvdoc_LICENSE.txt` and
 |---|---|
 | [OpenCV](https://github.com/opencv/opencv) | Apache 2.0 |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | MIT, © Microsoft Corporation |
+| [Ferrite](https://github.com/AaravGupta17/Ferrite), as [Ferrite-DocScanner](https://github.com/ogshrug/Ferrite-DocScanner) (the Ferrite build only, in place of ONNX Runtime) | MIT |
 | [XNNPACK](https://github.com/google/XNNPACK) (inside ONNX Runtime) | BSD 3-Clause, © Facebook, Inc. and its affiliates, © Google LLC |
 | [AndroidX](https://developer.android.com/jetpack/androidx) (AppCompat, Activity, Lifecycle, RecyclerView, ViewPager2, ExifInterface, CameraX, Room) | Apache 2.0 |
 | [Material Components for Android](https://github.com/material-components/material-components-android) | Apache 2.0 |
@@ -43,7 +44,7 @@ Gradle Plugin and KSP (Apache 2.0). None of these is part of the installed app.
 
 The Apache License 2.0 is reproduced in [LICENSE](LICENSE).
 
-### MIT License (UVDoc, ONNX Runtime, Astryx)
+### MIT License (UVDoc, ONNX Runtime, Astryx, Ferrite)
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy

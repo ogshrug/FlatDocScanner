@@ -10,6 +10,8 @@ No account, no upload, no ads. Scans never leave the phone. The Play Store build
 
 Download the latest APK from [Releases](https://github.com/ogshrug/FlatDocScanner/releases): `arm64` for almost every phone, `universal` if that one won't install. Needs Android 7.0 or later.
 
+There are two builds of every release, identical except for what runs the two neural networks: the standard one uses ONNX Runtime; the `ferrite` one uses [Ferrite](https://github.com/ogshrug/Ferrite-DocScanner), a small C inference runtime adapted for this app, and is about a third smaller. The Ferrite build installs beside the standard one as *FlatDoc Ferrite*, and **Settings → Model engine** shows which one you are running.
+
 From then on the app updates itself: once a day it asks GitHub whether a newer release exists and offers it, or use **Settings → Check for updates**. A download is installed only if its checksum matches GitHub's and it is signed with the same key as the app you have; Android then asks you to confirm. The daily check can be switched off in Settings.
 
 ## Features
@@ -88,18 +90,20 @@ Corners are stored as fractions of the image size and the original photo is kept
 Requirements: Android Studio with JDK 17 or later (the bundled runtime works), Android SDK platform 37, and a device or emulator on Android 7.0 (API 24) or later.
 
 ```bash
-./gradlew :app:assembleGithubDebug               # debug APK
-./gradlew :app:installGithubDebug                # install on a connected device
-./gradlew :app:testGithubDebugUnitTest           # unit tests: geometry, auto-capture, spine fit, gutter gains, text export, updater
-./gradlew :app:lintGithubDebug                   # Android lint
-./gradlew :app:connectedGithubDebugAndroidTest   # on a device: detection, both models, OCR, PDF
+git submodule update --init                          # Ferrite sources (third_party/ferrite)
+./gradlew :app:assembleGithubOnnxDebug               # debug APK
+./gradlew :app:installGithubOnnxDebug                # install on a connected device
+./gradlew :app:testGithubOnnxDebugUnitTest           # unit tests: geometry, auto-capture, spine fit, gutter gains, text export, updater
+./gradlew :app:lintGithubOnnxDebug                   # Android lint
+./gradlew :app:connectedGithubOnnxDebugAndroidTest   # on a device: detection, both models, OCR, PDF
 ```
 
-- There are two flavours of the app. `github` (above) includes the self-updater, and with it the internet and install-packages permissions. `play` has neither: Play delivers updates and forbids apps that update themselves. Swap `Github` for `Play` in any task name to build that one. The updater lives in `app/src/github`, a do-nothing stand-in in `app/src/play`.
+- Variants combine two choices. The **engine**: `onnx` runs the models on ONNX Runtime; `ferrite` runs them on Ferrite, built from the `third_party/ferrite` submodule with the NDK (`app/src/ferrite/cpp`), with its own package name (`.ferrite`) so both install side by side. Swap `Onnx` for `Ferrite` in any task name. The model code talks to either through `ModelRunner` / `ModelEngine` (one per engine in `app/src/onnx` and `app/src/ferrite`), and each engine has its own copy of the two model files.
+- The **channel**: `github` (above) includes the self-updater, and with it the internet and install-packages permissions. `play` has neither: Play delivers updates and forbids apps that update themselves. Swap `Github` for `Play` in any task name to build that one. The updater lives in `app/src/github`, a do-nothing stand-in in `app/src/play`.
 
 - Add `-PtargetAbi=arm64-v8a` (or `x86_64` for an emulator) to package one CPU type. Without it the APK carries native libraries for all four and is about 350 MB.
 - Debug builds use the package `io.github.ogshrug.flatdocscanner.debug`, so they install beside the release app.
-- Every push runs the unit tests, lint for both flavours and a debug build on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
+- Every push runs the unit tests, lint and debug builds of the variants on GitHub Actions ([ci.yml](.github/workflows/ci.yml)).
 - Release builds are shrunk with R8 and signed with a key kept outside git; see [RELEASING.md](RELEASING.md).
 
 To regenerate the flattening model:
@@ -119,6 +123,7 @@ python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
 | Computer vision | OpenCV 4.14 (Maven Central `org.opencv:opencv`) |
 | Page detection | DocAligner LCNet-100 via ONNX Runtime, OpenCV fallback |
 | Curved pages | UVDoc via ONNX Runtime 1.30 |
+| Alternative engine | [Ferrite](https://github.com/ogshrug/Ferrite-DocScanner) (C11, NEON on arm64, AVX2 on x86-64), the `ferrite` build |
 | Text recognition | ML Kit Text Recognition v2 (Latin + Devanagari, bundled, offline) |
 | Storage | Room 2.8 (KSP) |
 | PDF | `android.graphics.pdf.PdfDocument` |
@@ -131,6 +136,7 @@ python tools/halve_model.py uvdoc_full.onnx app/src/main/assets/uvdoc.onnx
 app/src/main/java/io/github/ogshrug/flatdocscanner/
 ├── DocScannerApp.kt          Application: loads OpenCV, creates the repository
 ├── AppTheme.kt               Colour themes and light/dark, applied to every screen
+├── scan/ModelRunner.kt       What both engines implement (ModelEngine per engine in app/src/onnx, app/src/ferrite)
 ├── update/UpdateFeature.kt   Self-updater (in app/src/github; a stub in app/src/play)
 ├── scan/
 │   ├── Quad.kt               Corner geometry: ordering, convexity, output size (pure Kotlin)
@@ -226,4 +232,4 @@ Full policy: [PRIVACY.md](PRIVACY.md).
 
 FlatDocScanner is licensed under the [Apache License 2.0](LICENSE).
 
-It bundles the UVDoc model (MIT, © 2023 Tanguy Magne), the DocAligner model (Apache 2.0, DocsaidLab), OpenCV (Apache 2.0), ONNX Runtime (MIT) and other libraries under their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+It bundles the UVDoc model (MIT, © 2023 Tanguy Magne), the DocAligner model (Apache 2.0, DocsaidLab), OpenCV (Apache 2.0), ONNX Runtime (MIT), Ferrite (MIT, in the Ferrite build) and other libraries under their own licences; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

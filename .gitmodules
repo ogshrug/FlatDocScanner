@@ -1,0 +1,3 @@
+[submodule "third_party/ferrite"]
+	path = third_party/ferrite
+	url = https://github.com/ogshrug/Ferrite-DocScanner.git

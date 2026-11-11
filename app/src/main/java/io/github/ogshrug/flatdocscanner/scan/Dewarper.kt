@@ -1,8 +1,5 @@
 package io.github.ogshrug.flatdocscanner.scan
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
 import android.content.Context
 import android.graphics.Bitmap
 import org.opencv.android.Utils
@@ -18,7 +15,7 @@ import kotlin.math.roundToInt
 
 /**
  * Curved-page flattening with UVDoc (MIT, Verhoeven et al., SIGGRAPH Asia 2023), run on-device
- * with ONNX Runtime. The model sees the photo at 488×712 and predicts, for a 31×45 grid over
+ * with ONNX Runtime or Ferrite (see ModelEngine). The model sees the photo at 488×712 and predicts, for a 31×45 grid over
  * the flat page, where each point lies in the photo. That grid is upsampled and used to remap
  * the full-resolution photo, which matches the reference PyTorch implementation exactly.
  * The model is exported by tools/export_uvdoc_onnx.py.
@@ -30,9 +27,10 @@ object Dewarper {
     private const val IN_H = 712
 
     private lateinit var appContext: Context
-    private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
-    private val session: OrtSession by lazy {
-        ModelAssets.session(appContext, MODEL_ASSET, Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
+    private const val GRID_H = 45
+    private const val GRID_W = 31
+    private val model: ModelRunner by lazy {
+        ModelEngine.open(appContext, MODEL_ASSET, Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
     }
 
     fun init(context: Context) {
@@ -44,7 +42,7 @@ object Dewarper {
      * doesn't also pay for parsing 31 MB of weights.
      */
     fun warmUp() {
-        runCatching { session }
+        runCatching { model }
     }
 
     /** Flattens the page in [photo]. The output keeps the page's own proportions, long side [maxDim]. */
@@ -81,19 +79,15 @@ object Dewarper {
             chw[2 * plane + i] = (pixels[i * 3 + 2].toInt() and 0xFF) / 255f
         }
 
-        val input = OnnxTensor.createTensor(env, FloatBuffer.wrap(chw), longArrayOf(1, 3, IN_H.toLong(), IN_W.toLong()))
-        input.use {
-            session.run(mapOf("image" to input)).use { result ->
-                @Suppress("UNCHECKED_CAST")
-                val grid = (result[0].value as Array<Array<Array<FloatArray>>>)[0]
-                return toMat(grid[0]) to toMat(grid[1])
-            }
-        }
+        // Output [1, 2, 45, 31]: the grid's x coordinates, then its y coordinates.
+        val grid = FloatArray(2 * GRID_H * GRID_W)
+        model.run(FloatBuffer.wrap(chw), intArrayOf(1, 3, IN_H, IN_W), grid, intArrayOf(1, 2, GRID_H, GRID_W))
+        return toMat(grid, 0) to toMat(grid, GRID_H * GRID_W)
     }
 
-    private fun toMat(rows: Array<FloatArray>): Mat {
-        val m = Mat(rows.size, rows[0].size, CvType.CV_32F)
-        rows.forEachIndexed { r, row -> m.put(r, 0, row) }
+    private fun toMat(grid: FloatArray, offset: Int): Mat {
+        val m = Mat(GRID_H, GRID_W, CvType.CV_32F)
+        m.put(0, 0, grid.copyOfRange(offset, offset + GRID_H * GRID_W))
         return m
     }
 

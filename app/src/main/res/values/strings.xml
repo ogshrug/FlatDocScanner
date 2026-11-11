@@ -291,6 +291,7 @@
     <string name="settings_text_language">Text recognition language</string>
     <string name="settings_storage">Storage used</string>
     <string name="settings_about">About</string>
+    <string name="settings_engine">Model engine</string>
     <string name="settings_version">Version</string>
     <string name="settings_licenses">Open source licences</string>
     <string name="licenses_body">FlatDocScanner is licensed under the Apache License 2.0. It uses:
@@ -299,6 +300,7 @@
 • DocAligner model (page corners) — Apache 2.0, DocsaidLab; weights stored at half precision
 • OpenCV — Apache 2.0
 • ONNX Runtime — MIT, © Microsoft Corporation
+• Ferrite (in the Ferrite build) — MIT
 • XNNPACK — BSD 3-Clause, © Facebook, Inc. and Google LLC
 • ML Kit Text Recognition — Google, ML Kit Terms of Service
 • Astryx theme colours — MIT, © Meta Platforms, Inc. and affiliates

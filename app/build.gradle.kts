@@ -15,8 +15,8 @@ android {
         applicationId = "io.github.ogshrug.flatdocscanner"
         minSdk = 24
         targetSdk = 37
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -44,7 +44,11 @@ android {
     // Where the app is distributed. "github" carries a self-updater and so the internet
     // permission; "play" has neither, because Play delivers updates and forbids apps
     // that update themselves.
-    flavorDimensions += "channel"
+    //
+    // What runs the two neural networks. "onnx" uses ONNX Runtime; "ferrite" uses Ferrite
+    // (third_party/ferrite, a git submodule), a small C runtime built here with the NDK. The
+    // Ferrite build has its own package name, so both can be installed side by side.
+    flavorDimensions += listOf("channel", "engine")
     productFlavors {
         create("github") {
             dimension = "channel"
@@ -52,6 +56,25 @@ android {
         }
         create("play") {
             dimension = "channel"
+        }
+        create("onnx") {
+            dimension = "engine"
+            buildConfigField("String", "ENGINE", "\"onnx\"")
+            // Nothing native of our own to build: the CMake project below skips itself.
+            externalNativeBuild { cmake { arguments += "-DFERRITE_SKIP=ON" } }
+        }
+        create("ferrite") {
+            dimension = "engine"
+            applicationIdSuffix = ".ferrite"
+            buildConfigField("String", "ENGINE", "\"ferrite\"")
+        }
+    }
+
+    ndkVersion = "28.2.13676358"
+    externalNativeBuild {
+        cmake {
+            path = file("src/ferrite/cpp/CMakeLists.txt")
+            version = "3.31.6"
         }
     }
 
@@ -104,7 +127,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.opencv)
-    implementation(libs.onnxruntime.android)
+    "onnxImplementation"(libs.onnxruntime.android)
     implementation(libs.mlkit.text.latin)
     implementation(libs.mlkit.text.devanagari)
 
